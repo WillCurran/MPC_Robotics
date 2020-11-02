@@ -86,7 +86,7 @@ def numConcat(num1, num2, n_digits):
 def step1(X, n, k):
     (public_key, private_key) = paillier.generate_paillier_keypair() # G_OT
     q = [0] * n
-    for i in range (0,n):
+    # for i in range (0,n):
         #q[i] = Q_ot(public_Key, 1, 1, X[i]) # generate queries Q_OT
     return (public_key, private_key, q)
 
