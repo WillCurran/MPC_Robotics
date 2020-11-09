@@ -56,13 +56,13 @@ class Gate:
 ## In this case, we support NOT, AND, and XOR gates.
 class GarbledCircuit:
     # evaluate a circuit from left to right, and return final wire values
-    # assumes initial wire values are set and gates are in topological order
-    ########### CONSIDER INPUT/OUTPUT GATE LABELS ##############
+    #   - assumes initial wire values are set and gates are in topological order
+    #   - assumes only 1 gate holds all of the output wires
     def evaluate_circuit(self):
         print("Evaluating circuit...")
         for gate in self.gates:
             gate.evalGate()
-        return [wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires] # assumes only 1 gate holds all of the output wires (false assumption)
+        return [wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires]
 
     def __init__(self, _gates=[], _wires=[]):
         self.gates = _gates

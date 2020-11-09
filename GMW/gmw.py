@@ -1,6 +1,7 @@
 from garbled_circuit import *
 import random
 import copy
+# from multiprocessing import Process, Lock
 
 class Party:
     def __init__(self, _gc, _input):
@@ -44,7 +45,11 @@ def execGMW():
     print("Alice shares:", alice.xor_share, ", ", alice.r_other)
     print("Bob shares:", bob.xor_share, ", ", bob.r_other)
 
-    # both parties evaluate on their own with no communication (only an XOR gate)
+    # evaluate circuits concurrently. use lock for coordinating on AND gates.
+    # if __name__ == '__main__':
+    #     lock = Lock()
+    #     Process(target=alice.gc.evaluate_circuit, args=(lock,)).start()
+    
     res_A = alice.gc.evaluate_circuit()
     res_B = bob.gc.evaluate_circuit()
     print("Alice got", res_A)
