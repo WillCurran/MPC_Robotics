@@ -1,7 +1,7 @@
 from garbled_circuit import *
 import random
 import copy
-# from multiprocessing import Process, Lock
+from multiprocessing import Process, Pipe, Queue
 
 class Party:
     def __init__(self, _gc, _input):
@@ -49,13 +49,23 @@ def execGMW():
     # if __name__ == '__main__':
     #     lock = Lock()
     #     Process(target=alice.gc.evaluate_circuit, args=(lock,)).start()
-    
-    res_A = alice.gc.evaluate_circuit()
-    res_B = bob.gc.evaluate_circuit()
-    print("Alice got", res_A)
-    print("Bob got", res_B)
-    # combine shares to compute result (reveal secret output) together
-    result = [res_A[i] ^ res_B[i] for i in range(len(res_A))]
-    print("Actual result:", result)
+
+    if __name__ == '__main__':
+        parent_conn, child_conn = Pipe()
+        q = Queue()
+        p_a = Process(target=alice.gc.evaluate_circuit, args=(parent_conn, q, "A",))
+        p_b = Process(target=bob.gc.evaluate_circuit, args=(child_conn, q, "B",))
+        p_a.start()
+        p_b.start()
+        p_a.join()
+        p_b.join()
+        # should be 2 things in the queue for 1 output wire in this particular circuit
+        res1 = q.get()
+        print(res1.party, "got", res1.wire_vals)
+        res2 = q.get()
+        print(res2.party, "got", res2.wire_vals)
+        # combine shares to compute result (reveal secret output) together
+        result = [res1.wire_vals[i] ^ res2.wire_vals[i] for i in range(len(res1.wire_vals))]
+        print("Actual result:", result)
 
 execGMW()

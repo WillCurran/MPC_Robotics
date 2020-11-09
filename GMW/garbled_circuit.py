@@ -1,10 +1,18 @@
 from enum import Enum
+from multiprocessing import Process, Pipe, Queue
+
 ## A GateType is a possible gate function. 
 class GateType(Enum):
     NULL = -1
     NOT = 0
     XOR = 1
     AND = 2
+
+## A Msg is used to communicate between parties
+class Msg:
+    def __init__(self, wire_vals, party):
+        self.wire_vals = wire_vals
+        self.party = party
 
 ## A Wire is a directed edge from one gate to another, along which a value is carried.
 ## We will use the Wire class in the Circuit's adjacency list
@@ -58,11 +66,21 @@ class GarbledCircuit:
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires
-    def evaluate_circuit(self):
+    def evaluate_circuit(self, conn, q, circuit_owner):
         print("Evaluating circuit...")
         for gate in self.gates:
+            if gate.type == GateType.AND:
+                if conn.poll():             # if other party has already encountered, just execute OT
+                    # 1. bake in OT choice to table
+                    # 2. await response
+                    pass
+                else:                       # other party has not encountered the gate yet
+                    # 1. Send a msg to say I am creating the table
+                    # 2. Create table and send it over
+                    # 3. 
+                    pass
             gate.evalGate()
-        return [wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires]
+        q.put(Msg([wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):
         self.gates = _gates
