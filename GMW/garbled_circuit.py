@@ -1,5 +1,6 @@
 from enum import Enum
 from multiprocessing import Process, Pipe, Queue
+import random
 
 ## A GateType is a possible gate function. 
 class GateType(Enum):
@@ -31,15 +32,34 @@ class Wire:
 ## Implemented as a Doubly-Linked Adjacency List?
 class Gate:
     # return the gate function evaluation for this gate. Assumes 2 inputs max
-    def gate_function_eval(self):
+    def gate_function_eval(self, conn):
         if self.type == GateType.NOT:
             return ~self.inbound_wires[0].value     # careful, this assumes we have an unsigned integer value
         elif self.type == GateType.XOR:
             print("Wire vals:", self.inbound_wires[0].value, self.inbound_wires[1].value)
             print("Computing XOR. Got", self.inbound_wires[0].value ^ self.inbound_wires[1].value)
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
-        elif self.type == GateType.AND: # TODO
-            return self.inbound_wires[0].value
+        ##### INSECURE WITHOUT OT ######
+        elif self.type == GateType.AND:             # TODO - Implement 1-out-of-4 OT
+            if conn.poll():             # other party has already encountered the gate
+                # look for table message, select proper share
+                if conn.recv() == "CREATE TABLE":
+                    table = conn.recv()
+                    i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
+                    return table[i]
+                assert(False)
+            else:                       # other party has not encountered the gate yet
+                # Send a msg to say I am creating the table
+                conn.send("CREATE TABLE")
+                # Create table and send it over
+                r = random.randint(0, 1)
+                table = [r ^ ((self.inbound_wires[0].value ^ 0) & (self.inbound_wires[1].value ^ 0)),
+                         r ^ ((self.inbound_wires[0].value ^ 0) & (self.inbound_wires[1].value ^ 1)),
+                         r ^ ((self.inbound_wires[0].value ^ 1) & (self.inbound_wires[1].value ^ 0)),
+                         r ^ ((self.inbound_wires[0].value ^ 1) & (self.inbound_wires[1].value ^ 1))
+                        ]
+                conn.send(table)
+                return r
         return -1                                   # gate is of type NULL
 
     def __init__(self, _type=GateType.NULL):
@@ -48,7 +68,7 @@ class Gate:
         self.outbound_wires = []
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evalGate(self):
+    def evalGate(self, conn):
         if self.type != GateType.NULL:
             print("Gate Type:", self.type)
             if self.type == GateType.NOT:
@@ -56,7 +76,7 @@ class Gate:
             else:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
-            gate_output = self.gate_function_eval()
+            gate_output = self.gate_function_eval(conn)
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
@@ -69,17 +89,7 @@ class GarbledCircuit:
     def evaluate_circuit(self, conn, q, circuit_owner):
         print("Evaluating circuit...")
         for gate in self.gates:
-            if gate.type == GateType.AND:
-                if conn.poll():             # if other party has already encountered, just execute OT
-                    # 1. bake in OT choice to table
-                    # 2. await response
-                    pass
-                else:                       # other party has not encountered the gate yet
-                    # 1. Send a msg to say I am creating the table
-                    # 2. Create table and send it over
-                    # 3. 
-                    pass
-            gate.evalGate()
+            gate.evalGate(conn)
         q.put(Msg([wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):

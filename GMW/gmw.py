@@ -17,12 +17,13 @@ def execGMW():
     gc_A = GarbledCircuit()
     init_gate_A = gc_A.insertGate()
     init_gate_B = gc_A.insertGate()
-    xor_gate = gc_A.insertGate(GateType.XOR) # just an XOR gate to start
+    # xor_gate = gc_A.insertGate(GateType.XOR) # just an XOR gate to start
+    and_gate = gc_A.insertGate(GateType.AND)
     end_gate = gc_A.insertGate()
 
-    gc_A.insertWire(_source=init_gate_A, _destination=xor_gate)
-    gc_A.insertWire(_source=init_gate_B, _destination=xor_gate)
-    gc_A.insertWire(_source=xor_gate, _destination=end_gate)
+    gc_A.insertWire(_source=init_gate_A, _destination=and_gate)
+    gc_A.insertWire(_source=init_gate_B, _destination=and_gate)
+    gc_A.insertWire(_source=and_gate, _destination=end_gate)
 
     # B makes an identical gc
     gc_B = copy.deepcopy(gc_A)
@@ -40,16 +41,12 @@ def execGMW():
     alice.gc.wires[0].value = alice.xor_share
     alice.gc.wires[1].value = alice.r_other
     # Bob sets his wire values
-    bob.gc.wires[0].value = bob.xor_share
-    bob.gc.wires[1].value = bob.r_other
+    bob.gc.wires[0].value = bob.r_other
+    bob.gc.wires[1].value = bob.xor_share
     print("Alice shares:", alice.xor_share, ", ", alice.r_other)
     print("Bob shares:", bob.xor_share, ", ", bob.r_other)
 
-    # evaluate circuits concurrently. use lock for coordinating on AND gates.
-    # if __name__ == '__main__':
-    #     lock = Lock()
-    #     Process(target=alice.gc.evaluate_circuit, args=(lock,)).start()
-
+    # evaluate circuits concurrently.
     if __name__ == '__main__':
         parent_conn, child_conn = Pipe()
         q = Queue()
