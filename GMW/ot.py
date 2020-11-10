@@ -1,7 +1,8 @@
 from phe import paillier
 
-# This file does a standard 1-out-of-4 OT.
+# This file does a standard 1-out-of-2 OT, then uses it repeatedly to do 1-out-of-4 OT.
 # Based on Malek and Miri 2013, https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1512846
+#   - difficulty understanding how they use Paillier but still do exponentiations with encrypted numbers
 
 # key creation - assume some key exchange protocol used to share pk_shared
 pk_shared, sk_only_a = paillier.generate_paillier_keypair()
@@ -42,3 +43,10 @@ def example_execution_OT(choice_a, strings_b, pk_shared, sk_only_a):
 
 
 example_execution_OT(1, [0, 100], pk_shared, sk_only_a)
+
+# zero = pk_shared.encrypt(0)
+# one = pk_shared.encrypt(1)
+# one_double_enc = pk_shared.encrypt(one.ciphertext()) # does not work
+# print(sk_only_a.decrypt(sk_only_a.decrypt(one_double_enc).ciphertext()))
+# two = paillier.EncryptedNumber(pk_shared, one.ciphertext() * one.ciphertext())
+# print(sk_only_a.decrypt(two))
