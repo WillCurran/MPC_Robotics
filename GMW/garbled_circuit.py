@@ -38,8 +38,6 @@ class Gate:
                 return 1 - self.inbound_wires[0].value      # assumes 1 bit
             return self.inbound_wires[0].value
         elif self.type == GateType.XOR:
-            print("Wire vals:", self.inbound_wires[0].value, self.inbound_wires[1].value)
-            print("Computing XOR. Got", self.inbound_wires[0].value ^ self.inbound_wires[1].value)
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
         ##### INSECURE WITHOUT OT ######
         elif self.type == GateType.AND:             # TODO - Implement 1-out-of-4 OT
@@ -73,7 +71,6 @@ class Gate:
     def evalGate(self, conn, is_alice):
         if self.type != GateType.NULL:
             print("Gate Type:", self.type)
-            print(self.inbound_wires[0].value)
             if self.type == GateType.NOT:
                 assert(self.inbound_wires[0].value != None) # debug
             else:
