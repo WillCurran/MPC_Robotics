@@ -29,12 +29,14 @@ class Wire:
 
 
 ## A Gate is an implementation of a logic gate, with inbound and outbound Wires.
-## Implemented as a Doubly-Linked Adjacency List?
+## Implemented as a Doubly-Linked Adjacency List
 class Gate:
-    # return the gate function evaluation for this gate. Assumes 2 inputs max
-    def gate_function_eval(self, conn):
+    # return the gate function evaluation for this gate. Assumes 2 inputs
+    def gate_function_eval(self, conn, is_alice):
         if self.type == GateType.NOT:
-            return ~self.inbound_wires[0].value     # careful, this assumes we have an unsigned integer value
+            if is_alice:                                    # predetermined party (or requires coordination)
+                return 1 - self.inbound_wires[0].value      # assumes 1 bit
+            return self.inbound_wires[0].value
         elif self.type == GateType.XOR:
             print("Wire vals:", self.inbound_wires[0].value, self.inbound_wires[1].value)
             print("Computing XOR. Got", self.inbound_wires[0].value ^ self.inbound_wires[1].value)
@@ -68,15 +70,16 @@ class Gate:
         self.outbound_wires = []
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evalGate(self, conn):
+    def evalGate(self, conn, is_alice):
         if self.type != GateType.NULL:
             print("Gate Type:", self.type)
+            print(self.inbound_wires[0].value)
             if self.type == GateType.NOT:
                 assert(self.inbound_wires[0].value != None) # debug
             else:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
-            gate_output = self.gate_function_eval(conn)
+            gate_output = self.gate_function_eval(conn, is_alice)
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
@@ -89,7 +92,7 @@ class GarbledCircuit:
     def evaluate_circuit(self, conn, q, circuit_owner):
         print("Evaluating circuit...")
         for gate in self.gates:
-            gate.evalGate(conn)
+            gate.evalGate(conn, circuit_owner=="A")
         q.put(Msg([wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):

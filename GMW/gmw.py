@@ -13,17 +13,25 @@ class Party:
 
 # create a test circuit and run it across 2 parties with GMW
 def execGMW():
-    # A makes a gc
+    # A makes a digital comparator GC
+    # A --NOT1--AND1-- ----------(A < B)
+    #   \  ----^    v
+    #    \/         XOR--NOT3---(A = B)
+    #    /\         ^
+    #   /  ----v    |
+    # B --NOT2--AND2-- ----------(A > B)
     gc_A = GarbledCircuit()
     init_gate_A = gc_A.insertGate()
     init_gate_B = gc_A.insertGate()
-    # xor_gate = gc_A.insertGate(GateType.XOR) # just an XOR gate to start
-    and_gate = gc_A.insertGate(GateType.AND)
+    not_gate = gc_A.insertGate(GateType.NOT)
+    xor_gate = gc_A.insertGate(GateType.XOR)
+    # and_gate = gc_A.insertGate(GateType.AND)
     end_gate = gc_A.insertGate()
 
-    gc_A.insertWire(_source=init_gate_A, _destination=and_gate)
-    gc_A.insertWire(_source=init_gate_B, _destination=and_gate)
-    gc_A.insertWire(_source=and_gate, _destination=end_gate)
+    gc_A.insertWire(_source=init_gate_A, _destination=not_gate)
+    gc_A.insertWire(_source=init_gate_B, _destination=xor_gate)
+    gc_A.insertWire(_source=not_gate, _destination=xor_gate)
+    gc_A.insertWire(_source=xor_gate, _destination=end_gate)
 
     # B makes an identical gc
     gc_B = copy.deepcopy(gc_A)
