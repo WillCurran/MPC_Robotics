@@ -1,6 +1,6 @@
 from enum import Enum
 from multiprocessing import Process, Pipe, Queue
-import random
+import secrets
 
 ## A GateType is a possible gate function. 
 class GateType(Enum):
@@ -34,39 +34,31 @@ class Gate:
     # return the gate function evaluation for this gate. Assumes 2 inputs
     def gate_function_eval(self, conn, lock, is_alice):
         if self.type == GateType.NOT:
-
             if is_alice:                                    # predetermined party (or requires coordination)
                 return 1 - self.inbound_wires[0].value      # assumes 1 bit
             return self.inbound_wires[0].value
 
         elif self.type == GateType.XOR:
-
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
         
         ##### INSECURE WITHOUT OT ######
         elif self.type == GateType.AND:             # TODO - Implement 1-out-of-4 OT
-            
             if conn.poll():             # other party has already encountered the gate
-                # look for table message, select proper share
-                if conn.recv() == "CREATE TABLE":
-                    table = conn.recv()
-                    i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
-                    return table[i]
-                assert(False)           # debug. should never get here
+                # get table message, select proper share
+                table = conn.recv()
+                i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
+                return table[i]
             else:                       # other party has not encountered the gate yet
                 # race to acquire lock
                 lock.acquire()
-                if conn.poll():
+                if conn.poll():         # other party beat me to it
                     lock.release()
-                    if conn.recv() == "CREATE TABLE":
-                        table = conn.recv()
-                        i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
-                        return table[i]
-                    assert(False)           # debug. should never get here
-                # Send a msg to say I am creating the table
-                conn.send("CREATE TABLE")
+                    table = conn.recv()
+                    i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
+                    return table[i]
+                
                 # Create table and send it over
-                r = random.randint(0, 1)
+                r = secrets.randbelow(2)
                 table = [r ^ ((self.inbound_wires[0].value ^ 0) & (self.inbound_wires[1].value ^ 0)),
                          r ^ ((self.inbound_wires[0].value ^ 0) & (self.inbound_wires[1].value ^ 1)),
                          r ^ ((self.inbound_wires[0].value ^ 1) & (self.inbound_wires[1].value ^ 0)),

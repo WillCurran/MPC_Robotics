@@ -1,5 +1,5 @@
 from garbled_circuit import *
-import random
+import secrets
 import copy
 from multiprocessing import Process, Pipe, Queue, Lock
 
@@ -7,7 +7,7 @@ class Party:
     def __init__(self, _gc, _input):
         self.gc = _gc                           # my copy of the garbled circuit
         self.input = _input                     # my input (1-bit total for now)
-        self.r = random.randint(0, 1)
+        self.r = secrets.randbelow(2)
         self.xor_share = self.input ^ self.r
         self.r_other = None                     # the random share of the other party's secret input
 
