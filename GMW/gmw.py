@@ -1,7 +1,7 @@
 from garbled_circuit import *
 import random
 import copy
-from multiprocessing import Process, Pipe, Queue
+from multiprocessing import Process, Pipe, Queue, Lock
 
 class Party:
     def __init__(self, _gc, _input):
@@ -49,8 +49,8 @@ def execGMW():
     # B makes an identical gc
     gc_B = copy.deepcopy(gc_A)
 
-    alice_input = int(input("Alice input: ")[0])
-    bob_input = int(input("Bob input: ")[0])
+    alice_input = int(input("Alice input: ")[0]) # assumes single bit
+    bob_input = int(input("Bob input: ")[0])     # assumes single bit: TODO - support larger numbers
     # both parties own the same gc
     alice = Party(gc_A, alice_input)
     bob = Party(gc_B, bob_input)
@@ -75,8 +75,9 @@ def execGMW():
     if __name__ == '__main__':
         parent_conn, child_conn = Pipe()
         q = Queue()
-        p_a = Process(target=alice.gc.evaluate_circuit, args=(parent_conn, q, "A",))
-        p_b = Process(target=bob.gc.evaluate_circuit, args=(child_conn, q, "B",))
+        lock = Lock()
+        p_a = Process(target=alice.gc.evaluate_circuit, args=(parent_conn, q, lock, "A",))
+        p_b = Process(target=bob.gc.evaluate_circuit, args=(child_conn, q, lock, "B",))
         p_a.start()
         p_b.start()
         p_a.join()

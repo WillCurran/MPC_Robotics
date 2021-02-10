@@ -32,7 +32,7 @@ class Wire:
 ## Implemented as a Doubly-Linked Adjacency List
 class Gate:
     # return the gate function evaluation for this gate. Assumes 2 inputs
-    def gate_function_eval(self, conn, is_alice):
+    def gate_function_eval(self, conn, lock, is_alice):
         if self.type == GateType.NOT:
 
             if is_alice:                                    # predetermined party (or requires coordination)
@@ -52,8 +52,17 @@ class Gate:
                     table = conn.recv()
                     i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
                     return table[i]
-                assert(False)
+                assert(False)           # debug. should never get here
             else:                       # other party has not encountered the gate yet
+                # race to acquire lock
+                lock.acquire()
+                if conn.poll():
+                    lock.release()
+                    if conn.recv() == "CREATE TABLE":
+                        table = conn.recv()
+                        i = self.inbound_wires[0].value * 2 + self.inbound_wires[1].value
+                        return table[i]
+                    assert(False)           # debug. should never get here
                 # Send a msg to say I am creating the table
                 conn.send("CREATE TABLE")
                 # Create table and send it over
@@ -64,6 +73,7 @@ class Gate:
                          r ^ ((self.inbound_wires[0].value ^ 1) & (self.inbound_wires[1].value ^ 1))
                         ]
                 conn.send(table)
+                lock.release()
                 return r
                 
         return -1                                   # gate is of type NULL
@@ -74,7 +84,7 @@ class Gate:
         self.outbound_wires = []
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evalGate(self, conn, is_alice):
+    def evalGate(self, conn, lock, is_alice):
         if self.type != GateType.NULL:
             print("Gate Type:", self.type)
             if self.type == GateType.NOT:
@@ -82,7 +92,7 @@ class Gate:
             else:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
-            gate_output = self.gate_function_eval(conn, is_alice)
+            gate_output = self.gate_function_eval(conn, lock, is_alice)
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
@@ -91,11 +101,11 @@ class Gate:
 class GarbledCircuit:
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
-    #   - assumes only 1 gate holds all of the output wires
-    def evaluate_circuit(self, conn, q, circuit_owner):
+    #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
+    def evaluate_circuit(self, conn, q, lock, circuit_owner):
         print("Evaluating circuit...")
         for gate in self.gates:
-            gate.evalGate(conn, circuit_owner=="A")
+            gate.evalGate(conn, lock, circuit_owner=="A")
         q.put(Msg([wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):
