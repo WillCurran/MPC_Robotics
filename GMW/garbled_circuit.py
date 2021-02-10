@@ -34,13 +34,18 @@ class Gate:
     # return the gate function evaluation for this gate. Assumes 2 inputs
     def gate_function_eval(self, conn, is_alice):
         if self.type == GateType.NOT:
+
             if is_alice:                                    # predetermined party (or requires coordination)
                 return 1 - self.inbound_wires[0].value      # assumes 1 bit
             return self.inbound_wires[0].value
+
         elif self.type == GateType.XOR:
+
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
+        
         ##### INSECURE WITHOUT OT ######
         elif self.type == GateType.AND:             # TODO - Implement 1-out-of-4 OT
+            
             if conn.poll():             # other party has already encountered the gate
                 # look for table message, select proper share
                 if conn.recv() == "CREATE TABLE":
@@ -60,6 +65,7 @@ class Gate:
                         ]
                 conn.send(table)
                 return r
+                
         return -1                                   # gate is of type NULL
 
     def __init__(self, _type=GateType.NULL):
