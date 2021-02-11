@@ -78,7 +78,7 @@ class Gate:
     # assume gates are in topological order, so inbound wires must have a value
     def evalGate(self, conn, lock, is_alice):
         if self.type != GateType.NULL:
-            print("Gate Type:", self.type)
+            # print("Gate Type:", self.type)
             if self.type == GateType.NOT:
                 assert(self.inbound_wires[0].value != None) # debug
             else:
@@ -88,6 +88,10 @@ class Gate:
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
+    def print(self):
+        print("Gate Type:", self.type)
+        print("Inbound Wires:", self.inbound_wires)
+        print("Outbound Wires:", self.outbound_wires)
 ## A GarbledCircuit is a data structure to represent a logical circuit. It is a topologically sorted graph.
 ## In this case, we support NOT, AND, and XOR gates.
 class GarbledCircuit:
@@ -95,7 +99,7 @@ class GarbledCircuit:
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
     def evaluate_circuit(self, conn, q, lock, circuit_owner):
-        print("Evaluating circuit...")
+        # print("Evaluating circuit...")
         for gate in self.gates:
             gate.evalGate(conn, lock, circuit_owner=="A")
         q.put(Msg([wire.value for wire in self.gates[len(self.gates) - 1].inbound_wires], circuit_owner))
@@ -117,3 +121,7 @@ class GarbledCircuit:
         _source.outbound_wires.append(new_wire) # python immutability/pointer question. will this work for us?
         _destination.inbound_wires.append(new_wire) # python immutability/pointer question. will this work for us?
         return new_wire
+
+    def print(self):
+        print(self.gates)
+        print(self.wires)
