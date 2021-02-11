@@ -4,12 +4,44 @@ import copy
 from multiprocessing import Process, Pipe, Queue, Lock
 
 class Party:
-    def __init__(self, _gc, _input):
-        self.gc = _gc                           # my copy of the garbled circuit
-        self.input = _input                     # my input (1-bit total for now)
-        self.r = secrets.randbelow(2)
-        self.xor_share = self.input ^ self.r
-        self.r_other = None                     # the random share of the other party's secret input
+    def __init__(self, _input):
+        self.gc = None                          # my copy of the garbled circuit
+        # self.input = _input                     # my input (array of 1-bit shares for now)
+        # self.r = [secrets.randbelow(2) for i in range(self.input.length)]
+        self.my_shares = _input
+        # self.their_shares = []
+        # self.id = _id
+
+    def setGC(self, gc):
+        self.gc = gc
+
+    # i and j are indices of array we wish to compare
+    def configCompare(self, i, j):
+        for wire in self.gc.gates[0].outbound_wires:
+            wire.value = self.my_shares[i]
+        for wire in self.gc.gates[1].outbound_wires:
+            wire.value = self.my_shares[j]
+
+    # i and j are indices of array we wish to swap
+    def configExchange(self, i, j):
+        if(self.id == "A"):
+            for wire in self.gc.gates[0].outbound_wires:    # X
+                wire.value = self.my_shares[0]
+            for wire in self.gc.gates[1].outbound_wires:    # Y
+                wire.value = self.their_shares[0]
+            for wire in self.gc.gates[2].outbound_wires:    # C
+                wire.value = self.their_shares[0]
+        else:
+            for wire in self.gc.gates[0].outbound_wires:
+                wire.value = self.their_shares[0]
+            for wire in self.gc.gates[1].outbound_wires:
+                wire.value = self.my_shares[0]
+
+    # assumes one other party is also running this program concurrently in another process
+    # evaluate both compare and exchange circuits. Update values accordingly.
+    def compareExchange(self, conn, q, lock, comp_circ, exch_circ):
+        pass
+
 
 # input 2 bits (secret-shared form): A, B. output 3 bits (secret-shared form): A < B, A == B, A > B
 def comparatorCirc():
@@ -47,7 +79,7 @@ def comparatorCirc():
     return gc
 
 # input 3 bits (secret-shared form): X, Y, C. Output 2 bits (secret-shared form): if C, then Y, X. else X, Y
-def compareExchangeCirc():
+def exchangeCirc():
     # images available in resources/compare_exchange_logic
     gc = GarbledCircuit()
     init_gate_X = gc.insertGate()
@@ -85,32 +117,26 @@ def compareExchangeCirc():
 
 # create a test circuit and run it across 2 parties with GMW
 def execGMW():
-    gc_A = comparatorCirc()
+    gc_comp = comparatorCirc()
 
-    # B makes an identical gc
-    gc_B = copy.deepcopy(gc_A)
-
-    alice_input = int(input("Alice input: ")[0]) # assumes single bit
-    bob_input = int(input("Bob input: ")[0])     # assumes single bit: TODO - support larger numbers
+    alice_input = [0, 0]
+    bob_input = [0, 0]
+    alice_input[0] = int(input("Alice share1: ")[0]) # assumes single bit
+    alice_input[1] = int(input("Alice share2: ")[0]) # assumes single bit
+    bob_input[0] = int(input("Bob share1: ")[0])     # assumes single bit
+    bob_input[1] = int(input("Bob share2: ")[0])     # assumes single bit: TODO - support larger numbers
     # both parties own the same gc
-    alice = Party(gc_A, alice_input)
-    bob = Party(gc_B, bob_input)
-    # exchange shares
-    alice.r_other = bob.r
-    bob.r_other = alice.r
+    alice = Party(alice_input)
+    bob = Party(bob_input)
 
-    # Alice sets her wire values
-    for wire in alice.gc.gates[0].outbound_wires:
-        wire.value = alice.xor_share
-    for wire in alice.gc.gates[1].outbound_wires:
-        wire.value = alice.r_other
-    # Bob sets his wire values
-    for wire in bob.gc.gates[0].outbound_wires:
-        wire.value = bob.r_other
-    for wire in bob.gc.gates[1].outbound_wires:
-        wire.value = bob.xor_share
-    print("Alice shares:", alice.xor_share, ", ", alice.r_other)
-    print("Bob shares:", bob.xor_share, ", ", bob.r_other)
+    alice.setGC(gc_comp)
+    bob.setGC(copy.deepcopy(gc_comp))
+    # set wire values, preparing comparison of items 0 and 1 in the secret-shared array
+    alice.configCompare(0, 1)
+    bob.configCompare(0, 1)
+
+    print("Alice shares:", alice.my_shares)
+    print("Bob shares:", bob.my_shares)
 
     # evaluate circuits concurrently.
     if __name__ == '__main__':
@@ -132,10 +158,10 @@ def execGMW():
         result = [res1.wire_vals[i] ^ res2.wire_vals[i] for i in range(len(res1.wire_vals))]
         print("Actual result:", result)
         if result[0]:
-            print("A < B")
+            print("Item0 < Item1")
         elif result[1]:
-            print("A = B")
+            print("Item0 = Item1")
         else:
-            print("A > B")
+            print("Item0 > Item1")
 
 execGMW()
