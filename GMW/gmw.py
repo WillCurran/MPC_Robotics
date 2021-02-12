@@ -88,6 +88,7 @@ def comparatorCirc():
     return gc
 
 # input 3 bits (secret-shared form): X, Y, C. Output 2 bits (secret-shared form): if C, then Y, X. else X, Y
+# a translation from Jonsson paper into a GMW garbled circuit
 def exchangeCirc():
     # images available in resources/compare_exchange_logic
     gc = GarbledCircuit([],[])
@@ -160,10 +161,9 @@ def execGMW():
         p_a.join()
         p_b.join()
         # should be 2 things in the queue for 1 output wire in this particular circuit
-        # res1 = q.get()
-        # print(res1.party, "got", res1.wire_vals)
-        # res2 = q.get()
-        # print(res2.party, "got", res2.wire_vals)
+        while(not q.empty()):
+            res = q.get()
+            print(res.party, "got", res.wire_vals)
         # combine shares to compute result (reveal secret output) together
         # result = [res1.wire_vals[i] ^ res2.wire_vals[i] for i in range(len(res1.wire_vals))]
         # print("Actual result:", result)
