@@ -33,23 +33,22 @@ class Party:
 
     # assumes one other party is also running this program concurrently in another process
     # evaluate both compare and exchange circuits. Update values accordingly.
-    def compareExchange(self, conn, q, lock, comp_circ, exch_circ):
+    def compareExchange(self, conn, q, lock, comp_circ, exch_circ, i, j):
         self.gc_comp = comp_circ
         self.gc_exch = exch_circ
-        self.configCompare(0, 1)
+        self.configCompare(i, j)
         self.gc_comp.evaluate_circuit(conn, q, lock, self.id)
-        self.comparison_bit = self.gc_comp.gates[-1].inbound_wires[0].value
-        lock.acquire()
-        print("ID:", self.id)
-        print("comparison share:", self.comparison_bit)
-        lock.release()
-        self.configExchange(0, 1)
+        self.comparison_bit = self.gc_comp.gates[-1].inbound_wires[2].value
+        # lock.acquire()
+        # print("ID:", self.id)
+        # print("comparison share:", self.comparison_bit)
+        # lock.release()
+        self.configExchange(i, j)
         self.gc_exch.evaluate_circuit(conn, q, lock, self.id)
-        lock.acquire()
-        print("ID:", self.id)
-        print("X =", self.gc_exch.gates[-1].inbound_wires[0].value)
-        print("Y =", self.gc_exch.gates[-1].inbound_wires[1].value)
-        lock.release()
+        # update list with circuit's evaluation
+        self.my_shares[i] = self.gc_exch.gates[-1].inbound_wires[0].value
+        self.my_shares[j] = self.gc_exch.gates[-1].inbound_wires[1].value
+        q.put(self.my_shares)
 
 
 # input 2 bits (secret-shared form): A, B. output 3 bits (secret-shared form): A < B, A == B, A > B
@@ -125,17 +124,27 @@ def exchangeCirc():
     gc.insertWire(_source=xor_2, _destination=end_gate)
     return gc
 
+# return 2 secret shared lists for the input list
+# assume 1 bit each for now
+def splitList(a):
+    r = [secrets.randbits(1) for i in range(len(a))]
+    s2 = [a[i] ^ r[i] for i in range(len(a))]
+    return (r, s2)
+
+# return 1 list for the two input secret shared lists
+# assume 1 bit each for now
+def mergeLists(a, b):
+    return [a[i] ^ b[i] for i in range(len(a))]
+
 # create a test circuit and run it across 2 parties with GMW
 def execGMW():
     gc_exch = exchangeCirc()
     gc_comp = comparatorCirc()
 
-    alice_input = [0, 0]
-    bob_input = [0, 0]
-    alice_input[0] = int(input("Alice share1: ")[0]) # assumes single bit
-    alice_input[1] = int(input("Alice share2: ")[0]) # assumes single bit
-    bob_input[0] = int(input("Bob share1: ")[0])     # assumes single bit
-    bob_input[1] = int(input("Bob share2: ")[0])     # assumes single bit: TODO - support larger numbers
+    input_list = input("Input list (space delimited): ")   # assumes single bits
+    input_list = [int(s) for s in input_list.split(' ')]
+    assert(len(input_list) >= 2)
+    alice_input, bob_input = splitList(input_list)
     # both parties own the same gc
     alice = Party(alice_input, "A")
     bob = Party(bob_input, "B")
@@ -146,32 +155,32 @@ def execGMW():
     # alice.configCompare(0, 1)
     # bob.configCompare(0, 1)
 
-    print("Alice shares:", alice.my_shares)
-    print("Bob shares:", bob.my_shares)
+    print("Alice shares:\n", alice.my_shares)
+    print("Bob shares:\n", bob.my_shares)
 
     # evaluate circuits concurrently.
     if __name__ == '__main__':
+        i = 0
+        j = 1
         parent_conn, child_conn = Pipe()
         q = Queue()
         lock = Lock()
-        p_a = Process(target=alice.compareExchange, args=(parent_conn, q, lock, gc_comp, gc_exch,))
-        p_b = Process(target=bob.compareExchange, args=(child_conn, q, lock, copy.deepcopy(gc_comp), copy.deepcopy(gc_exch),))
+        p_a = Process(target=alice.compareExchange, args=(parent_conn, q, lock, gc_comp, gc_exch, i, j,))
+        p_b = Process(target=bob.compareExchange, args=(child_conn, q, lock, copy.deepcopy(gc_comp), copy.deepcopy(gc_exch), i, j,))
         p_a.start()
         p_b.start()
         p_a.join()
         p_b.join()
-        # should be 2 things in the queue for 1 output wire in this particular circuit
-        while(not q.empty()):
-            res = q.get()
-            print(res.party, "got", res.wire_vals)
-        # combine shares to compute result (reveal secret output) together
-        # result = [res1.wire_vals[i] ^ res2.wire_vals[i] for i in range(len(res1.wire_vals))]
-        # print("Actual result:", result)
-        # if result[0]:
-        #     print("Item0 < Item1")
-        # elif result[1]:
-        #     print("Item0 = Item1")
-        # else:
-        #     print("Item0 > Item1")
+        # should be 2 things in the queue
+        if(q.empty()):
+            print("ERROR QUEUE SIZE")
+            return
+        res1 = q.get()
+        if(q.empty()):
+            print("ERROR QUEUE SIZE")
+            return
+        res2 = q.get()
+        print("list after swap", mergeLists(res1, res2))
 
 execGMW()
+

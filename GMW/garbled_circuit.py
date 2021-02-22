@@ -102,7 +102,7 @@ class GarbledCircuit:
         # print("Evaluating circuit...")
         for gate in self.gates:
             gate.evalGate(conn, lock, circuit_owner=="A")
-        q.put(Msg([wire.value for wire in self.gates[-1].inbound_wires], circuit_owner))
+        # q.put(Msg([wire.value for wire in self.gates[-1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):
         self.gates = _gates
