@@ -13,6 +13,6 @@ class SortingNetwork:
                 self.swaps.append([])
                 for j in range(n-i-1):
                     self.swaps[i].append((j, j+1))
-            print(self.swaps)
+            # print(self.swaps)
 
 # s = SortingNetwork('BUBBLE', 6)

@@ -98,11 +98,9 @@ class GarbledCircuit:
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
-    def evaluate_circuit(self, conn, q, lock, circuit_owner):
-        # print("Evaluating circuit...")
+    def evaluate_circuit(self, conn, lock, circuit_owner):
         for gate in self.gates:
             gate.evalGate(conn, lock, circuit_owner=="A")
-        # q.put(Msg([wire.value for wire in self.gates[-1].inbound_wires], circuit_owner))
 
     def __init__(self, _gates=[], _wires=[]):
         self.gates = _gates

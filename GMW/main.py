@@ -8,21 +8,24 @@ from Party import *
 # create a test circuit and run it across 2 parties with GMW
 gc_exch = gmw.exchangeCirc()
 gc_comp = gmw.comparatorCirc()
-gc_exch_copy = copy.deepcopy(gc_exch)
-gc_comp_copy = copy.deepcopy(gc_comp)
 
-input_list = input("Input list (space delimited): ")   # assumes single bits
-input_list = [int(s) for s in input_list.split(' ')]
-n = len(input_list)
+times = input("Input times (space delimited): ")   # assumes single bits
+symbols = input("Input symbols (space delimited): ")   # assumes single bits
+times = [int(s) for s in times.split(' ')]
+symbols = [int(s) for s in symbols.split(' ')]
+assert(len(times) == len(symbols))
+# symbols = [ord(c) for c in symbols.split(' ')]
+n = len(times)
 assert(n >= 2)
+input_list = list(zip(times, symbols))
 alice_input, bob_input = utils.splitList(input_list)
 network = SortingNetwork('BUBBLE', n)
 
 # both parties own the same gc, but will alter values
 alice = Party(alice_input, "A")
 bob = Party(bob_input, "B")
-alice.setGC(gc_comp, gc_exch)
-bob.setGC(gc_comp_copy, gc_exch_copy)
+alice.setGC(gc_comp, [gc_exch, copy.deepcopy(gc_exch)])
+bob.setGC(copy.deepcopy(gc_comp), [copy.deepcopy(gc_exch), copy.deepcopy(gc_exch)])
 # both own same network, will not alter values
 alice.setSortingNetwork(network)
 bob.setSortingNetwork(network)
@@ -34,11 +37,11 @@ print("Bob shares:\n", bob.my_shares)
 if __name__ == '__main__':
     i = 0
     j = 1
-    parent_conn, child_conn = Pipe()
+    connections = [Pipe() for i in range(2)]
+    locks = [Lock() for i in range(3)]
     q = Queue()
-    lock = Lock()
-    p_a = Process(target=alice.executeSort, args=(parent_conn, q, lock,))
-    p_b = Process(target=bob.executeSort, args=(child_conn, q, lock,))
+    p_a = Process(target=alice.executeSort, args=([a[0] for a in connections], q, locks,))
+    p_b = Process(target=bob.executeSort, args=([a[1] for a in connections], q, locks,))
     p_a.start()
     p_b.start()
     p_a.join()
