@@ -73,3 +73,16 @@ def exchangeCirc():
     gc.insertWire(_source=xor_2, _destination=end_gate)
     return gc
 
+# debug AND gate
+def andCirc():
+    gc = GarbledCircuit([],[])
+    init_gate_A = gc.insertGate()
+    init_gate_B = gc.insertGate()
+    and_1 = gc.insertGate(GateType.AND)
+    end_gate = gc.insertGate()
+
+    gc.insertWire(_source=init_gate_A, _destination=and_1)
+    gc.insertWire(_source=init_gate_B, _destination=and_1)
+
+    gc.insertWire(_source=and_1, _destination=end_gate)
+    return gc
