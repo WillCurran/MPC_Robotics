@@ -72,3 +72,25 @@ class Party:
             for swap in level:
                 self.compareExchange(connections, ipc_locks, swap[0], swap[1])
         q.put(self.my_shares)
+
+    # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
+    # def equality(self, connections, ipc_locks, a, b, n_bits)
+    #     return 0
+    
+    # # compare two numbers a, b (indices i, j of start of bit string we're looking at)
+    # def compare(self, connections, ipc_locks, a, b, i, j, n_bits_i, n_bits_j):
+    #     # just compute a greater than circuit for one bit
+    #     if(n_bits_i == n_bits_j == 1):
+    #         bit_a = a & utils.bitmask(i,i) >> i
+    #         bit_b = b & utils.bitmask(j,j) >> j
+    #         for wire in self.gc_comp.gates[0].outbound_wires:
+    #             wire.value = bit_a
+    #         for wire in self.gc_comp.gates[1].outbound_wires:
+    #             wire.value = bit_b
+    #         self.gc_comp.evaluate_circuit(connections, ipc_locks, self.id, self.n_time_bits)
+    #         return self.gc_comp.gates[-1].inbound_wires[2].value
+    #     # spawn a thread for each, not quite this simple.
+    #     return self.compare(connections, ipc_locks, a, b, n_bits//2, i, j + n_bits//2) ^ 
+    #         self.equality(connections, ipc_locks, a, b, n_bits, i, j) & 
+    #         self.compare(connections, ipc_locks, a, b, n_bits//2, j, j - n_bits//2)
+    
