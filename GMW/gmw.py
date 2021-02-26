@@ -1,4 +1,5 @@
 from garbled_circuit import *
+import math
 
 # input 2 bits (secret-shared form): A, B. output 3 bits (secret-shared form): A < B, A == B, A > B
 def comparatorCirc():
@@ -80,7 +81,7 @@ def exchangeCirc():
 def equalityCirc(n_bits):
     gc = GarbledCircuit(GateType.CIRCUIT)
     
-    if n_bits == 2:
+    if n_bits == 1:
         INPUT_BUS_A = gc.insertGate(GateType.INPUT_BUS)
         INPUT_BUS_B = gc.insertGate(GateType.INPUT_BUS)
         xor_1 = gc.insertGate(GateType.XOR)
@@ -92,6 +93,30 @@ def equalityCirc(n_bits):
         gc.insertWire(_source=xor_1, _destination=not_1)
         gc.insertWire(_source=not_1, _destination=OUTPUT_BUS_A)
         return gc
+    n1 = math.floor(n_bits/2.0)
+    n2 = math.ceil(n_bits/2.0)
+    gc1 = equalityCirc(n1)
+    gc2 = equalityCirc(n2)
 
+    # need enough wires for 2 numbers
+    for i in range(2*n_bits):
+        gc.insertGate(GateType.INPUT_BUS)
+    gc.insertGate(GateType.CIRCUIT, gc1)
+    gc.insertGate(GateType.CIRCUIT, gc2)
+    and_1 = gc.insertGate(GateType.AND)
+    OUTPUT_BUS_A = gc.insertGate(GateType.OUTPUT_BUS)
+    # connect most significant bits of each number first
+    for i in range(0, 2*n1, 2):
+        gc.insertWire(_source=gc.input_busses[i//2], _destination=gc1, _dest_group=i)
+        gc.insertWire(_source=gc.input_busses[n_bits + i//2], _destination=gc1, _dest_group=i+1)
+    # then least significant bits
+    for i in range(0, 2*n2, 2):
+        gc.insertWire(_source=gc.input_busses[n1 + i//2], _destination=gc2, _dest_group=i)
+        gc.insertWire(_source=gc.input_busses[n_bits + n1 + i//2], _destination=gc2, _dest_group=i+1)
 
+    # merge
+    gc.insertWire(_source=gc1, _destination=and_1, _source_group=0)
+    gc.insertWire(_source=gc2, _destination=and_1, _source_group=0)
+    gc.insertWire(_source=and_1, _destination=OUTPUT_BUS_A)
+    # gc.printGatesRecursive()
     return gc

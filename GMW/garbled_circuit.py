@@ -112,7 +112,7 @@ class Gate:
             # pipe info thru - all inbound wires are of same value (is this property fully asserted at insertion?)
             if len(self.inbound_wires) > 0:
                 for wire in self.outbound_wires:
-                    wire.value = self.inbound_wires[0]
+                    wire.value = self.inbound_wires[0].value
         else:
             # print("Gate Type:", self.type)
             if self.type == GateType.NOT:
@@ -121,6 +121,9 @@ class Gate:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
             gate_output = self.gate_function_eval(connections, ipc_locks, circuit_owner, n_bits)
+            # ipc_locks[0].acquire()
+            # print(circuit_owner, ": Value for gateType", self.type, "computed to be", gate_output)
+            # ipc_locks[0].release()
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
@@ -157,16 +160,23 @@ class GarbledCircuit(Gate):
         self.gates = []
         self.wires = []
 
-    def insertGate(self, _type=GateType.NULL):
-        new_gate = Gate(_type)
-        self.gates.append(new_gate)
+    def insertGate(self, _type=GateType.NULL, _gate=None):
         if _type == GateType.INPUT_BUS:
+            new_gate = Gate(_type)
+            self.gates.append(new_gate)
             self.input_busses.append(new_gate)
+            return new_gate
         elif _type == GateType.OUTPUT_BUS:
+            new_gate = Gate(_type)
+            self.gates.append(new_gate)
             self.output_busses.append(new_gate)
+            return new_gate
         elif _type == GateType.CIRCUIT:
-            pass
-        return new_gate
+            self.gates.append(_gate)
+        else:
+            new_gate = Gate(_type)
+            self.gates.append(new_gate)
+            return new_gate
 
     def canEvaluate(self):
         for bus in self.input_busses:
@@ -184,9 +194,11 @@ class GarbledCircuit(Gate):
     def insertWire(self, _value=None, _source=None, _destination=None, _source_group=None, _dest_group=None):
         assert((_source in self.gates) and (_destination in self.gates))
         if isinstance(_source, GarbledCircuit):
-            assert(_source_group in _source.output_busses)
+            assert(_source_group >= 0)
+            assert(_source_group < len(_source.output_busses))
             if isinstance(_destination, GarbledCircuit):
-                assert(_dest_group in _destination.input_busses)
+                assert(_dest_group >= 0)
+                assert(_dest_group < len(_destination.input_busses))
                 new_wire = Wire(_value, _source.output_busses[_source_group], _destination.input_busses[_dest_group])
                 _source.output_busses[_source_group].outbound_wires.append(new_wire)
                 _destination.input_busses[_dest_group].inbound_wires.append(new_wire)
@@ -199,7 +211,8 @@ class GarbledCircuit(Gate):
                 self.wires.append(new_wire)
                 return new_wire
         elif isinstance(_destination, GarbledCircuit):
-            assert(_dest_group in _destination.input_busses)
+            assert(_dest_group >= 0)
+            assert(_dest_group < len(_destination.input_busses))
             new_wire = Wire(_value, _source, _destination.input_busses[_dest_group])
             _source.outbound_wires.append(new_wire)
             _destination.input_busses[_dest_group].inbound_wires.append(new_wire)
@@ -215,3 +228,11 @@ class GarbledCircuit(Gate):
     def print(self):
         print(self.gates)
         print(self.wires)
+
+    def printGatesRecursive(self):
+        for gate in self.gates:
+            if isinstance(gate, GarbledCircuit):
+                gate.printGatesRecursive()
+            else:
+                gate.print()
+            print("\n")

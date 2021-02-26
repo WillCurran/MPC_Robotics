@@ -26,14 +26,13 @@ class Party:
         self.network = network
 
     def configEquality(self, i, j):
-        self.gc_eq.input_busses[0].outbound_wires[0].value = self.my_shares[i] >> self.n_symbol_bits & utils.bitmask(0,0)
-        self.gc_eq.input_busses[1].outbound_wires[0].value = self.my_shares[j] >> self.n_symbol_bits & utils.bitmask(0,0)
-        # for k in range(self.n_time_bits//2):
-        #     for wire in self.gc_eq.input_busses[k].outbound_wires:
-        #         wire.value = (self.my_shares[i] & utils.bitmask(k,k)) >> (self.n_symbol_bits + k)
-        # for k in range(self.n_time_bits//2, self.n_time_bits):
-        #     for wire in self.gc_eq.input_busses[k].outbound_wires:
-        #         wire.value = (self.my_shares[j] & utils.bitmask(k,k)) >> (self.n_symbol_bits + k)
+        self.gc_eq.input_busses[0].outbound_wires[0].value = (self.my_shares[i] >> (self.n_symbol_bits + 1)) & utils.bitmask(0,0)
+        self.gc_eq.input_busses[1].outbound_wires[0].value = (self.my_shares[j] >> (self.n_symbol_bits + 1)) & utils.bitmask(0,0)
+        self.gc_eq.input_busses[2].outbound_wires[0].value = (self.my_shares[i] >> self.n_symbol_bits) & utils.bitmask(0,0)
+        self.gc_eq.input_busses[3].outbound_wires[0].value = (self.my_shares[j] >> self.n_symbol_bits) & utils.bitmask(0,0)
+        # print("vals are:")
+        # for i in range(4):
+        #     print(self.gc_eq.input_busses[i].outbound_wires[0].value)
 
     def executeEquality(self, connections, q, ipc_locks):
         self.configEquality(0, 1)
