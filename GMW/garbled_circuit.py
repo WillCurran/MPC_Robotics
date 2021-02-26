@@ -11,6 +11,9 @@ class GateType(Enum):
     NOT = 0
     XOR = 1
     AND = 2
+    CIRCUIT = 3
+    INPUT_BUS = 4
+    OUTPUT_BUS = 5
 
 ## A Msg is used to communicate between parties
 class Msg:
@@ -30,7 +33,6 @@ class Wire:
         self.destination = _destination
         # Wire.id_counter += 1
 
-
 ## A Gate is an implementation of a logic gate, with inbound and outbound Wires.
 ## Implemented as a Doubly-Linked Adjacency List
 class Gate:
@@ -39,6 +41,7 @@ class Gate:
         self.type = _type
         self.inbound_wires = []
         self.outbound_wires = []
+        # self.visited = False
     
     def evalAndOnBitN(self, conn, ipc_lock, bit_i, q):
         # get n-th bit of inbound wires. if bit is there, we're dealing with a 1. else 0.
@@ -77,9 +80,9 @@ class Gate:
                 q.put(r << bit_i)
 
     # return the gate function evaluation for this gate. Assumes 2 inputs
-    def gate_function_eval(self, connections, ipc_locks, is_alice, n_bits):
+    def gate_function_eval(self, connections, ipc_locks, circuit_owner, n_bits):
         if self.type == GateType.NOT:
-            if is_alice:                                                            # predetermined party (or requires coordination)
+            if circuit_owner == "A":                                                # predetermined party (or requires coordination)
                 return ~self.inbound_wires[0].value & utils.bitmask(0, n_bits-1)    # keep sign, flip all other pertinent bits
             return self.inbound_wires[0].value
 
@@ -103,49 +106,111 @@ class Gate:
         return -1                                   # gate is of type NULL
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evalGate(self, connections, ipc_locks, is_alice, n_bits):
-        if self.type != GateType.NULL:
+    def evaluate(self, connections, ipc_locks, circuit_owner, n_bits):
+        if self.type == GateType.INPUT_BUS or self.type == GateType.OUTPUT_BUS:
+            assert(self.canEvaluate())
+            # pipe info thru - all inbound wires are of same value (is this property fully asserted at insertion?)
+            if len(self.inbound_wires) > 0:
+                for wire in self.outbound_wires:
+                    wire.value = self.inbound_wires[0]
+        else:
             # print("Gate Type:", self.type)
             if self.type == GateType.NOT:
                 assert(self.inbound_wires[0].value != None) # debug
             else:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
-            gate_output = self.gate_function_eval(connections, ipc_locks, is_alice, n_bits)
+            gate_output = self.gate_function_eval(connections, ipc_locks, circuit_owner, n_bits)
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
+
+    # assumption of topological order
+    def canEvaluate(self):
+        return True
 
     def print(self):
         print("Gate Type:", self.type)
         print("Inbound Wires:", self.inbound_wires)
         print("Outbound Wires:", self.outbound_wires)
+
 ## A GarbledCircuit is a data structure to represent a logical circuit. It is a topologically sorted graph.
 ## In this case, we support NOT, AND, and XOR gates.
-class GarbledCircuit:
+## A GarbledCircuit is a collection of gates and wires, where gates may also be other circuits!
+## Actual inheritance property is mostly a formality to show that a circuit may be treated as a gate.
+class GarbledCircuit(Gate):
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
-    def evaluate_circuit(self, connections, ipc_locks, circuit_owner, n_bits):
+    def evaluate(self, connections, ipc_locks, circuit_owner, n_bits):
         for gate in self.gates:
-            gate.evalGate(connections, ipc_locks, circuit_owner=="A", n_bits)
+            # wait to execute a circuit until all components are ready.
+            if gate.canEvaluate():
+                gate.evaluate(connections, ipc_locks, circuit_owner, n_bits)
+                # wipe inbound wires if circuit needs to be reused
+                if isinstance(gate, GarbledCircuit):
+                    gate.wipeInboundWires()
 
-    def __init__(self, _gates=[], _wires=[]):
-        self.gates = _gates
-        self.wires = _wires
+    def __init__(self, _type):
+        super().__init__(_type)
+        self.input_busses = []       # used as docking ports for inbound wires from other circuits
+        self.output_busses = []     # used as docking ports, when this circuit is a source of a wire
+        self.gates = []
+        self.wires = []
 
     def insertGate(self, _type=GateType.NULL):
         new_gate = Gate(_type)
         self.gates.append(new_gate)
+        if _type == GateType.INPUT_BUS:
+            self.input_busses.append(new_gate)
+        elif _type == GateType.OUTPUT_BUS:
+            self.output_busses.append(new_gate)
+        elif _type == GateType.CIRCUIT:
+            pass
         return new_gate
 
-    def insertWire(self, _value=None, _source=None, _destination=None):
-        assert(_source in self.gates) # debug
-        assert(_destination in self.gates) # debug
-        new_wire = Wire(_value, _source, _destination)
-        self.wires.append(new_wire)
-        _source.outbound_wires.append(new_wire) # python immutability/pointer question. will this work for us?
-        _destination.inbound_wires.append(new_wire) # python immutability/pointer question. will this work for us?
-        return new_wire
+    def canEvaluate(self):
+        for bus in self.input_busses:
+            for wire in bus.inbound_wires:
+                if wire.value == None:
+                    return False
+        return True
+
+    def wipeInboundWires(self):
+        for bus in self.input_busses:
+            for wire in bus.inbound_wires:
+                wire.value = None
+
+    # _source_group/_dest_group are used if the source or destination is a circuit to route wire properly.
+    def insertWire(self, _value=None, _source=None, _destination=None, _source_group=None, _dest_group=None):
+        assert((_source in self.gates) and (_destination in self.gates))
+        if isinstance(_source, GarbledCircuit):
+            assert(_source_group in _source.output_busses)
+            if isinstance(_destination, GarbledCircuit):
+                assert(_dest_group in _destination.input_busses)
+                new_wire = Wire(_value, _source.output_busses[_source_group], _destination.input_busses[_dest_group])
+                _source.output_busses[_source_group].outbound_wires.append(new_wire)
+                _destination.input_busses[_dest_group].inbound_wires.append(new_wire)
+                self.wires.append(new_wire)
+                return new_wire
+            else:
+                new_wire = Wire(_value, _source.output_busses[_source_group], _destination)
+                _source.output_busses[_source_group].outbound_wires.append(new_wire)
+                _destination.inbound_wires.append(new_wire)
+                self.wires.append(new_wire)
+                return new_wire
+        elif isinstance(_destination, GarbledCircuit):
+            assert(_dest_group in _destination.input_busses)
+            new_wire = Wire(_value, _source, _destination.input_busses[_dest_group])
+            _source.outbound_wires.append(new_wire)
+            _destination.input_busses[_dest_group].inbound_wires.append(new_wire)
+            self.wires.append(new_wire)
+            return new_wire
+        else:
+            new_wire = Wire(_value, _source, _destination)
+            _source.outbound_wires.append(new_wire)
+            _destination.inbound_wires.append(new_wire)
+            self.wires.append(new_wire)
+            return new_wire
 
     def print(self):
         print(self.gates)

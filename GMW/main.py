@@ -8,6 +8,7 @@ from Party import *
 # create a test circuit and run it across 2 parties with GMW
 gc_exch = gmw.exchangeCirc()
 gc_comp = gmw.comparatorCirc()
+gc_eq = gmw.equalityCirc(2)
 
 n_time_bits = int(input("Number of time bits: "))
 n_symbol_bits = int(input("Number of symbol bits: "))
@@ -30,8 +31,8 @@ network = SortingNetwork('BUBBLE', n)
 # both parties own the same gc, but will alter values
 alice = Party(n_time_bits, n_symbol_bits, alice_input, "A")
 bob = Party(n_time_bits, n_symbol_bits, bob_input, "B")
-alice.setGC(gc_comp, gc_exch)
-bob.setGC(copy.deepcopy(gc_comp), copy.deepcopy(gc_exch))
+alice.setGC(gc_comp, gc_exch, gc_eq)
+bob.setGC(copy.deepcopy(gc_comp), copy.deepcopy(gc_exch), copy.deepcopy(gc_eq))
 # both own same network, will not alter values
 alice.setSortingNetwork(network)
 bob.setSortingNetwork(network)
@@ -52,8 +53,8 @@ if __name__ == '__main__':
     # itc_locks = [Lock() for i in range(2)]
     # Queue for reporting output
     q = Queue()
-    p_a = Process(target=alice.executeSort, args=([a[0] for a in connections], q, ipc_locks,))
-    p_b = Process(target=bob.executeSort, args=([a[1] for a in connections], q, ipc_locks,))
+    p_a = Process(target=alice.executeEquality, args=([a[0] for a in connections], q, ipc_locks,))
+    p_b = Process(target=bob.executeEquality, args=([a[1] for a in connections], q, ipc_locks,))
     p_a.start()
     p_b.start()
     p_a.join()
