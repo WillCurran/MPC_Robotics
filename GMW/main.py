@@ -8,13 +8,14 @@ from Party import *
 # create a test circuit and run it across 2 parties with GMW
 gc_exch = gmw.exchangeCirc()
 gc_comp = gmw.comparatorCirc()
-gc_eq = gmw.equalityCirc(2)
+
 
 n_time_bits = int(input("Number of time bits: "))
 n_symbol_bits = int(input("Number of symbol bits: "))
 times = input("Input times (space delimited): ")
 symbols = input("Input symbols (space delimited): ")
 
+gc_eq = gmw.equalityCirc(n_time_bits)
 max_time = 2**n_time_bits - 1
 max_symbol = 2**n_symbol_bits - 1
 times = [int(s) if int(s) <= max_time else exit(1) for s in times.split(' ')]
@@ -53,8 +54,8 @@ if __name__ == '__main__':
     # itc_locks = [Lock() for i in range(2)]
     # Queue for reporting output
     q = Queue()
-    p_a = Process(target=alice.executeEquality, args=([a[0] for a in connections], q, ipc_locks,))
-    p_b = Process(target=bob.executeEquality, args=([a[1] for a in connections], q, ipc_locks,))
+    p_a = Process(target=alice.executeSort, args=([a[0] for a in connections], q, ipc_locks,))
+    p_b = Process(target=bob.executeSort, args=([a[1] for a in connections], q, ipc_locks,))
     p_a.start()
     p_b.start()
     p_a.join()

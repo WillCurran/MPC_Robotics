@@ -26,10 +26,10 @@ class Party:
         self.network = network
 
     def configEquality(self, i, j):
-        self.gc_eq.input_busses[0].outbound_wires[0].value = (self.my_shares[i] >> (self.n_symbol_bits + 1)) & utils.bitmask(0,0)
-        self.gc_eq.input_busses[1].outbound_wires[0].value = (self.my_shares[j] >> (self.n_symbol_bits + 1)) & utils.bitmask(0,0)
-        self.gc_eq.input_busses[2].outbound_wires[0].value = (self.my_shares[i] >> self.n_symbol_bits) & utils.bitmask(0,0)
-        self.gc_eq.input_busses[3].outbound_wires[0].value = (self.my_shares[j] >> self.n_symbol_bits) & utils.bitmask(0,0)
+        for k in range(self.n_time_bits):
+            self.gc_eq.input_busses[k].outbound_wires[0].value = (self.my_shares[i] >> (self.n_symbol_bits + self.n_time_bits-k-1)) & 1
+        for k in range(self.n_time_bits):
+            self.gc_eq.input_busses[self.n_time_bits+k].outbound_wires[0].value = (self.my_shares[j] >> (self.n_symbol_bits + self.n_time_bits-k-1)) & 1
         # print("vals are:")
         # for i in range(4):
         #     print(self.gc_eq.input_busses[i].outbound_wires[0].value)
@@ -37,7 +37,9 @@ class Party:
     def executeEquality(self, connections, q, ipc_locks):
         self.configEquality(0, 1)
         self.gc_eq.evaluate(connections, ipc_locks, self.id, 1)
-        print(self.gc_eq.output_busses[0].inbound_wires[0].value)
+        ipc_locks[0].acquire()
+        print(self.id, self.gc_eq.output_busses[0].inbound_wires[0].value)
+        ipc_locks[0].release()
 
     # i and j are indices of array we wish to compare
     # set wires to time values (extract time bits)
