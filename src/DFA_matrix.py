@@ -1,7 +1,7 @@
 import random
 from phe import paillier
 import math
-import ot
+import otJC
 import secrets
 
 MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbled matrix element size
@@ -103,12 +103,17 @@ class Alice:
     # Client encrypts her input at her current row_i and sends it to server in the form
     # (c_enc_a, c_prime_enc_a)
     def encrypt_input_i(self):
-        return ot.alice_send_choices_enc(int(self.input[self.row_i]), self.public_key)
+        self.conn.send(otJC.alice_send_choices_enc(int(self.input[self.row_i]), self.public_key))
+
+    # used for getting the output at current state, without advancing to the next state yet.
+    # we use this for revealing the output at the last row of the GM
+    def revealColor(self):
+        pass
 
     # Client retrieves the keys and computes the final result.
     def step3(self, key_enc, GM):
         # decrypt garbled key
-        k_i = ot.alice_compute_result(int(self.input[self.row_i]), key_enc[0], key_enc[1], self.private_key)
+        k_i = otJC.alice_compute_result(int(self.input[self.row_i]), key_enc[0], key_enc[1], self.private_key)
 
         # get the corresponding random nums
         random.seed(self.pad)
@@ -131,7 +136,7 @@ class Alice:
         self.state = init_state_index
         self.pad = init_pad
 
-    def __init__(self, dfa, alice_input, n, k, s):
+    def __init__(self, conn, dfa, alice_input, n, k, s):
         # we need an extra input (can be meaningless) to get the output at the last state
         # this is because the garbled key for the last row must exist, even if it doesn't need to point to the correct delta.
         self.input = alice_input + str(secrets.randbits(1))
@@ -144,12 +149,16 @@ class Alice:
         self.pad = None
         self.row_i = 0 # which row am I in?
         (self.public_key, self.private_key) = paillier.generate_paillier_keypair()
+        self.conn = conn
+        # send pk to bob
+        self.conn.send(self.public_key)
 		
 class Bob:
     # Server mixes his inputs with client's and sends back to client in the form
     # (d_0_enc, d_1_enc). Alice tells us which row of the matrix she is currently looking at.
     def send_garbled_key(self, alice_choices, alice_i):
-        return ot.bob_send_strings_enc(
+        self.conn.send(
+            otJC.bob_send_strings_enc(
             int(self.input[alice_i]), 
             self.K_enc[alice_i], 
             alice_choices[0], 
@@ -157,6 +166,7 @@ class Bob:
             self.public_key, 
             self.k
             )
+        )
 
     # Server Computes a Garbled DFA Matrix GM
     def step2(self, dfa, n, k):
@@ -248,7 +258,7 @@ class Bob:
         self.n += 1
 
 
-    def __init__(self, bob_input, dfa, public_key, k, s):
+    def __init__(self, conn, bob_input, dfa, public_key, k, s):
         self.input = bob_input
         self.input += str(secrets.randbits(1)) # or random choice
         self.dfa = dfa
@@ -256,6 +266,7 @@ class Bob:
         self.k = k
         self.s = s
         self.n = 0
+        self.conn = conn
 
         # start with 1 row of M, 1 row of PM, 1 row GM, 2 rows PER, 2 rows PAD, 1 garbled keypair
         self.q = dfa['states']
@@ -296,6 +307,8 @@ class Bob:
 
         self.init_state = self.PER[0][dfa['initial'] ]
         self.init_pad = self.PAD[0][self.init_state]
+
+        self.conn.send((self.init_state, self.init_pad))
 
         self.M = [self.m_row]
         self.GM = [new_gm_row]

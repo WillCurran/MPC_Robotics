@@ -74,4 +74,4 @@ if __name__ == '__main__':
     res2 = q.get()
     output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
     print("list after sort", output_list)
-    print("Took", end-start, "seconds. Yikes!")
+    print("Sort took", end-start, "seconds. Yikes!")
