@@ -1,6 +1,7 @@
 from garbled_circuit import *
 import secrets
 import utils
+import DFA_test as mm
 
 class Party:
     def __init__(self, _n_time_bits, _n_symbol_bits, _input, _id):
@@ -89,7 +90,33 @@ class Party:
         for level in self.network.swaps:
             for swap in level:
                 self.compareExchange(connections, ipc_locks, swap[0], swap[1])
-        q.put(self.my_shares)
+        # q.put(self.my_shares)
+
+    def executeMooreMachineEval(self, conn, k, s):
+        moore_machine = {'alphabet': [0, 1],
+        'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
+        'initial': 0,
+        'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
+        'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
+		}
+        shared_input_str = ''
+        # leading 0s in front of bits
+        bit_format = '0' + str(self.n_symbol_bits) + 'b'
+        for share in self.my_shares:
+            shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
+        # print('bit format', bit_format)
+        # print("symbols are", [share & utils.bitmask(0, self.n_symbol_bits) for share in self.my_shares])
+        print(self.id, "Input is", shared_input_str)
+        n = len(shared_input_str)
+        if self.id == "A":
+            mm.runAlice(conn, shared_input_str, n, k, s, moore_machine)
+        else:
+            mm.runBob(conn, moore_machine, shared_input_str, n, k, s, '')
+
+    # execute sort and then moore machine eval
+    def executePipeline(self, connections, q, ipc_locks, k, s):
+        self.executeSort(connections, q, ipc_locks)
+        self.executeMooreMachineEval(connections[0], k, s)
 
     # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
     # def equality(self, connections, ipc_locks, a, b, n_bits)

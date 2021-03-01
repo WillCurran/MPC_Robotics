@@ -12,6 +12,17 @@ def runBob(conn, moore_machine, bob_input, n, k, s, xor_input):
     alice_pk = conn.recv()
     bob = Bob(conn, bob_input, moore_machine, alice_pk, k, s) # Bob creates garbled matrix, sends init state&pad
 
+    # print("M")
+    # print_M(bob.M)
+    # print("PER")
+    # print_M(bob.PER)
+    # print("PM")
+    # print_M(bob.PM)
+    # print("GM")
+    # print_M(bob.GM)
+    for i in range(n):
+        # print("Iteration", i)
+        bob.append_GM_row()
     print("M")
     print_M(bob.M)
     print("PER")
@@ -20,21 +31,10 @@ def runBob(conn, moore_machine, bob_input, n, k, s, xor_input):
     print_M(bob.PM)
     print("GM")
     print_M(bob.GM)
-    for i in range(n):
-        print("Iteration", i)
-        bob.append_GM_row()
-        print("M")
-        print_M(bob.M)
-        print("PER")
-        print_M(bob.PER)
-        print("PM")
-        print_M(bob.PM)
-        print("GM")
-        print_M(bob.GM)
     # send GM to Alice
     conn.send(bob.GM)
-    print("Standard Eval:", evalDfa(bob.M, n, xor_input, moore_machine['initial']))
-    print("Permuted Eval:", evalDfa(bob.PM, n, xor_input, bob.PER[0][moore_machine['initial'] ]))
+    # print("Standard Eval:", evalDfa(bob.M, n, xor_input, moore_machine['initial']))
+    # print("Permuted Eval:", evalDfa(bob.PM, n, xor_input, bob.PER[0][moore_machine['initial'] ]))
 
     for i in range(n):
         # bob must now receive choices_enc
@@ -91,4 +91,4 @@ def test():
     end = time.time()
     print("Moore machine eval took", end-start, "seconds.")
 
-test()
+# test()

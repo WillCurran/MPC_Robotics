@@ -105,6 +105,9 @@ class Alice:
     def encrypt_input_i(self):
         self.conn.send(otJC.alice_send_choices_enc(int(self.input[self.row_i]), self.public_key))
 
+    # TODO - fix Alice's lagging output
+    # Solution: output not concatenated to each element. Instead, put it on the back of the pair, so
+    #   we can get the output without another garbled key (for an input which doesn't exist yet)
     # used for getting the output at current state, without advancing to the next state yet.
     # we use this for revealing the output at the last row of the GM
     def revealColor(self):
