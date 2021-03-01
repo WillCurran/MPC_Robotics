@@ -1,4 +1,6 @@
 from phe import paillier
+import secrets
+import sys
 
 # key creation - assume some key exchange protocol used to share pk_shared
 # pk_shared, sk_only_a = paillier.generate_paillier_keypair()
@@ -12,15 +14,15 @@ def alice_send_choices_enc(choice_a, pk_shared):
         c_prime_enc_a = t
     return c_enc_a, c_prime_enc_a
 
-def bob_send_strings_enc(choice_b, strings_b, c0_enc, c1_enc, pk_shared):
+def bob_send_strings_enc(choice_b, strings_b, c0_enc, c1_enc, pk_shared, k):
     # Generate randoms
-    r0 = 0B010
-    r1 = 0B101
+    r0 = secrets.randbits(k)
+    r1 = secrets.randbits(k)
     strings_enc_b = [pk_shared.encrypt(x) for x in strings_b]
     d0 = d1 = None
     if choice_b:
-        d0 = strings_enc_b[1] + concatenate_itself_n_times(c0_enc, r0) # supposed to concatenate r0 times
-        d1 = strings_enc_b[0] + concatenate_itself_n_times(c1_enc, r1) # supposed to concatenate r1 times
+        d0 = strings_enc_b[1] + concatenate_itself_n_times(c0_enc, r0) # supposed to concatenate r0 times: what's the purpose?
+        d1 = strings_enc_b[0] + concatenate_itself_n_times(c1_enc, r1) # why addition and not addition mod 2? Overflow issue?
     else:
         d0 = strings_enc_b[0] + concatenate_itself_n_times(c0_enc, r0)
         d1 = strings_enc_b[1] + concatenate_itself_n_times(c1_enc, r1)

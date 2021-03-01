@@ -4,7 +4,7 @@ import math
 import ot
 import secrets
 
-MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbling?
+MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbled matrix element size
 
 # p. 7 of Mohassel ODFA paper (Moore Variation)
 def DfaMat(dfa, n):
@@ -149,7 +149,14 @@ class Bob:
     # Server mixes his inputs with client's and sends back to client in the form
     # (d_0_enc, d_1_enc). Alice tells us which row of the matrix she is currently looking at.
     def send_garbled_key(self, alice_choices, alice_i):
-        return ot.bob_send_strings_enc(int(self.input[alice_i]), self.K_enc[alice_i], alice_choices[0], alice_choices[1], self.public_key)
+        return ot.bob_send_strings_enc(
+            int(self.input[alice_i]), 
+            self.K_enc[alice_i], 
+            alice_choices[0], 
+            alice_choices[1], 
+            self.public_key, 
+            self.k
+            )
 
     # Server Computes a Garbled DFA Matrix GM
     def step2(self, dfa, n, k):
