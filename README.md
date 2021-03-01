@@ -16,6 +16,11 @@
 
 Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier installed.
 
+## GMW Protocol current status:
+- 2-party digital comparator of a single bit is implemented
+- caveat: Need to implement 1-out-of-4 OT still. Ran into issues implementing Malek and Miri 2013 protocol with python-paillier. May go an (easier?) route which uses several 1-out-of-2 OT calls if it is simpler.
+  - (https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1512846)
+=======
 ## GMW Protocol / Sorting Network notes:
 - in progress
 
