@@ -1,8 +1,8 @@
 import random
 from phe import paillier
-from random import randint
 import math
 import ot
+import secrets
 
 MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbling?
 
@@ -112,7 +112,7 @@ class Alice:
 
         # get the corresponding random nums
         random.seed(self.pad)
-        pad0_pad1 = (randint(0, 2**(self.k_prime + self.s)), randint(0, 2**(self.k_prime + self.s)))
+        pad0_pad1 = (random.getrandbits(self.k_prime + self.s), random.getrandbits(self.k_prime + self.s))
         # navigate to the next state (first guess)
         newstate_concat_output_concat_newpad = k_i ^ pad0_pad1[0] ^ GM[self.row_i][self.state][0]
         if not hasNTrailingZeros(newstate_concat_output_concat_newpad, self.s):
@@ -134,7 +134,7 @@ class Alice:
     def __init__(self, dfa, alice_input, n, k, s):
         # we need an extra input (can be meaningless) to get the output at the last state
         # this is because the garbled key for the last row must exist, even if it doesn't need to point to the correct delta.
-        self.input = alice_input + str(randint(0, 1))
+        self.input = alice_input + str(secrets.randbits(1))
         self.n = n
         self.q = dfa['states']
         self.k = k
@@ -181,10 +181,12 @@ class Bob:
                 a = a ^ K[i][0]
                 b = b ^ K[i][1]
                 GM[i][j] = (a,b)
-                # Pseudo Random Number Generator G
+                # Pseudo Random Number Generator G 
+                # ****NOT SECURE BECAUSE SYSTEM RAND DOES NOT HAVE A SET SEED FUNCTION*****
+                # Would need to replace with a cryptographically secure pseudo-random number generator.
                 random.seed(PAD[i][j])
-                a = randint(0,2**k_prime)
-                b = randint(0,2**k_prime)
+                a = random.getrandbits(k_prime)
+                b = random.getrandbits(k_prime)
                 pad = (a,b)
                 a = GM[i][j][0] ^ pad[0]
                 b = GM[i][j][1] ^ pad[1]
@@ -197,8 +199,9 @@ class Bob:
     def append_GM_row(self):
         new_gm_row = [(0,0)] * self.q
         # Server generates 1 random keypair for garbling:
-        a = randint(0,2**(self.k_prime + self.s))
-        b = randint(0,2**(self.k_prime + self.s))
+        # (This is a cryptographically secure RNG, in the order of security bits)
+        a = secrets.randbits(self.k_prime + self.s)
+        b = secrets.randbits(self.k_prime + self.s)
         garbled_keypair = (a,b)
         # Server generates a new row to append to PAD:
         next_pad_row = random.sample(range(0,2**self.k), self.q)
@@ -221,8 +224,8 @@ class Bob:
             new_gm_row[j] = (a,b)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[len(self.PAD) - 1][j])
-            a = randint(0,2**(self.k_prime + self.s))
-            b = randint(0,2**(self.k_prime + self.s))
+            a = random.getrandbits(self.k_prime + self.s)
+            b = random.getrandbits(self.k_prime + self.s)
             pad = (a,b)
             a = new_gm_row[j][0] ^ pad[0]
             b = new_gm_row[j][1] ^ pad[1]
@@ -240,7 +243,7 @@ class Bob:
 
     def __init__(self, bob_input, dfa, public_key, k, s):
         self.input = bob_input
-        self.input += str(randint(0, 1)) # or random choice
+        self.input += str(secrets.randbits(1)) # or random choice
         self.dfa = dfa
         self.public_key = public_key
         self.k = k
@@ -252,12 +255,15 @@ class Bob:
         self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1) + MOORE_MACHINE_OUTPUT_BITS
         new_gm_row = [(0,0)] * self.q
         # Server generates 1 random keypair for garbling:
-        a = randint(0, 2**(self.k_prime + self.s))
-        b = randint(0, 2**(self.k_prime + self.s))
+        a = secrets.randbits(self.k_prime + self.s)
+        b = secrets.randbits(self.k_prime + self.s)
         garbled_keypair = (a,b)
         self.m_row = singleMooreRow(self.dfa)
         # need to start with two rows for pad and permutation matrix
-        self.PAD = [random.sample(range(0,2**self.k), self.q) for i in range(2)]
+        # the best we can do is to start with cryptographically secure pad, for now.
+        # later, we must use a cryptographically secure PRNG which supports a setseed operation.
+        self.PAD = [[secrets.randbits(self.k) for j in range(self.q)] for i in range(2)]
+        print(self.PAD)
         self.PER = genPerm(2, self.q)
         self.PM = permDfaMat([self.m_row], self.PER, 1, self.q)
         for j in range (0, self.q):
@@ -274,8 +280,8 @@ class Bob:
             new_gm_row[j] = (a,b)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[0][j])
-            a = randint(0,2**(self.k_prime + self.s))
-            b = randint(0,2**(self.k_prime + self.s))
+            a = random.getrandbits(self.k_prime + self.s)
+            b = random.getrandbits(self.k_prime + self.s)
             pad = (a,b)
             a = new_gm_row[j][0] ^ pad[0]
             b = new_gm_row[j][1] ^ pad[1]

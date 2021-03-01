@@ -6,9 +6,27 @@
 - Oblivious Transfer is not fully randomized
 - Security parameter is set to a low number. Need to add ability to crank 'k' up higher.
 
+## To-dos:
+- Get working for larger numbers (add randomness in OT)
+- Get working for larger security parameters (Python int size question?)
+- Interface with an input file from beams simulation
+- Generate chunks of Garbled Matrix in a smarter way (Currently adding one line at a time. In the end, will need to have dynamic size since we're processing a possibly neverending stream of inputs)
+- Put Alice and Bob into different processes (This might involve linking up with the GMW code so may not need to do a lot of extra work here)
+- Add in batch OT and random OT pre-computation (Same story as above)
+
 Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier installed.
 
 ## GMW Protocol current status:
 - 2-party digital comparator of a single bit is implemented
 - caveat: Need to implement 1-out-of-4 OT still. Ran into issues implementing Malek and Miri 2013 protocol with python-paillier. May go an (easier?) route which uses several 1-out-of-2 OT calls if it is simpler.
   - (https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1512846)
+=======
+## GMW Protocol / Sorting Network notes:
+- in progress
+
+## To-dos:
+- Add OT and random OT pre-computation
+- Get working for larger numbers (parallelize OT)
+- Add sorting network data structure and evaluation
+- link with Moore Machine code
+- interface with input from simulation (add additional layer of sensor parties in other processes)
