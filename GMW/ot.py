@@ -19,7 +19,7 @@ import sys
 
 # Alice generates RSA keypair and sends bob one legitimate key and one garbage one.
 # choice is given by the swapping of the key order
-def send_pks(conn, N, e, choice):
+def send_pks(conn, N, e, choice, label):
     sk_alice = rsa.generate_private_key(public_exponent=e, key_size=N)
     # TODO - not secure yet. need to be able to generate public key which looks
     # indistinguishable without knowing a corresponding secret key
@@ -34,14 +34,14 @@ def send_pks(conn, N, e, choice):
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
     if choice:
-        conn.send(("(pk0, pk1)", (pk_prime, pk)))
+        conn.send((label, (pk_prime, pk)))
     else:
-        conn.send(("(pk0, pk1)", (pk, pk_prime)))
+        conn.send((label, (pk, pk_prime)))
     print("Alice sent keys.")
     return sk_alice
 
 # Bob encrypts his messages and sends them back
-def send_msgs_enc(conn, _pk0, _pk1, x0, x1, N):
+def send_msgs_enc(conn, _pk0, _pk1, x0, x1, N, label):
     pk0 = serialization.load_pem_public_key(_pk0)
     pk1 = serialization.load_pem_public_key(_pk1)
     e0 = pk0.encrypt(
@@ -60,7 +60,7 @@ def send_msgs_enc(conn, _pk0, _pk1, x0, x1, N):
             label=None
         )
     )
-    conn.send(("[e0, e1]", [e0, e1]))
+    conn.send((label, [e0, e1]))
 
 # Alice decrypts the message of her choice
 def decrypt_selection(conn, e_list, sk_alice, choice):
@@ -75,7 +75,7 @@ def decrypt_selection(conn, e_list, sk_alice, choice):
 
 def alice_exec_example_OT(conn, choice, N, e):
     print("alice reporting for duty!")
-    sk = send_pks(conn, N, e, choice)
+    sk = send_pks(conn, N, e, choice, '')
     e_list = conn.recv()[1]
     msg = decrypt_selection(conn, e_list, sk, choice)
     print("Alice done. Got", msg)
@@ -83,8 +83,8 @@ def alice_exec_example_OT(conn, choice, N, e):
 def bob_exec_example_OT(conn, x0, x1, N):
     print("bob reporting for duty!")
     print("Bob has strings x0 =", x0, ", x1 =", x1)
-    (pk0, pk1) = conn.recv()[1]
-    send_msgs_enc(conn, pk0, pk1, x0, x1, N)
+    (label, (pk0, pk1)) = conn.recv()
+    send_msgs_enc(conn, pk0, pk1, x0, x1, N, '')
     print("Bob done")
 
 def test(x0, x1, choice):
