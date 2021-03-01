@@ -4,6 +4,7 @@ import secrets
 import utils
 import threading
 import queue
+import ot
 
 ## A GateType is a possible gate function. 
 class GateType(Enum):
@@ -53,6 +54,8 @@ class Gate:
 
         # other party has already encountered the gate
         if conn.poll():
+            # perform 1 out of 4 OT with other party to get table
+            # send public keys, then wait for encrypted 
             # get table message, select proper share
             table = conn.recv()
             i = bit1 * 2 + bit0
