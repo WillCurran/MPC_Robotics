@@ -37,7 +37,6 @@ def send_pks(conn, N, e, choice, label):
         conn.send((label, (pk_prime, pk)))
     else:
         conn.send((label, (pk, pk_prime)))
-    print("Alice sent keys.")
     return sk_alice
 
 # Bob encrypts his messages and sends them back

@@ -4,6 +4,7 @@ from multiprocessing import Process, Pipe, Queue, Lock
 import gmw
 from sorting_network import *
 from Party import *
+import time
 
 # create a test circuit and run it across 2 parties with GMW
 gc_exch = gmw.exchangeCirc()
@@ -56,10 +57,12 @@ if __name__ == '__main__':
     q = Queue()
     p_a = Process(target=alice.executeSort, args=([a[0] for a in connections], q, ipc_locks,))
     p_b = Process(target=bob.executeSort, args=([a[1] for a in connections], q, ipc_locks,))
+    start = time.time()
     p_a.start()
     p_b.start()
     p_a.join()
     p_b.join()
+    end = time.time()
     # should be 2 things in the queue
     if(q.empty()):
         print("ERROR QUEUE SIZE")
@@ -71,3 +74,4 @@ if __name__ == '__main__':
     res2 = q.get()
     output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
     print("list after sort", output_list)
+    print("Took", end-start, "seconds. Yikes!")

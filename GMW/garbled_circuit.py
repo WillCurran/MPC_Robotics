@@ -4,7 +4,7 @@ import secrets
 import utils
 import threading
 import queue
-import ot
+import ot4
 
 ## A GateType is a possible gate function. 
 class GateType(Enum):
@@ -57,9 +57,9 @@ class Gate:
             # perform 1 out of 4 OT with other party to get table
             # send public keys, then wait for encrypted 
             # get table message, select proper share
-            table = conn.recv()
-            i = bit1 * 2 + bit0
-            q.put(table[i] << bit_i)
+            choice = bit1 * 2 + bit0
+            res = ot4.receiver(conn, choice)
+            q.put(res << bit_i)
         # other party has not encountered the gate yet
         else:
             # one of us gets to make the table
@@ -67,18 +67,18 @@ class Gate:
             # other party beat me to it
             if conn.poll():
                 ipc_lock.release()
-                table = conn.recv()
-                i = bit1 * 2 + bit0
-                q.put(table[i] << bit_i)
+                choice = bit1 * 2 + bit0
+                res = ot4.receiver(conn, choice)
+                q.put(res << bit_i)
             else:
                 # Create table and send it over
-                r = secrets.randbelow(2)
+                r = secrets.randbits(1)
                 table = [r ^ ((bit1 ^ 0) & (bit0 ^ 0)),
                             r ^ ((bit1 ^ 0) & (bit0 ^ 1)),
                             r ^ ((bit1 ^ 1) & (bit0 ^ 0)),
                             r ^ ((bit1 ^ 1) & (bit0 ^ 1))
                         ]
-                conn.send(table)
+                ot4.sender(conn, table)
                 ipc_lock.release()
                 q.put(r << bit_i)
 
@@ -92,8 +92,7 @@ class Gate:
         elif self.type == GateType.XOR:
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
         
-        ##### INSECURE WITHOUT OT ######
-        elif self.type == GateType.AND:             # TODO - Implement 1-out-of-4 OT
+        elif self.type == GateType.AND:
             q = queue.Queue()
             # spawn a thread for each bit to execute OTs in parallel
             threads = [threading.Thread(target=self.evalAndOnBitN, args=(connections[i], ipc_locks[i], i, q,))

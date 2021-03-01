@@ -11,17 +11,17 @@ e = 65537
 # Then, Bob performs 3 OTs with Alice, initiated by Alice.
 def sender(conn, table):
     s = [secrets.randbits(1) for i in range(6)]
-    print("Bob secrets", s)
+    # print("Bob secrets", s)
     table[0] = s[0] ^ s[2] ^ table[0]
     table[1] = s[0] ^ s[3] ^ table[1]
     table[2] = s[1] ^ s[4] ^ table[2]
     table[3] = s[1] ^ s[5] ^ table[3]
-    print("Bob sending table...")
+    # print("Bob sending table...")
     conn.send(("table", table))
 
     # OTs
     for i in range(0, 5, 2):
-        print("Bob on OT", i//2)
+        # print("Bob on OT", i//2)
         (label, (pk0, pk1)) = conn.recv()
         x0 = (s[i]).to_bytes(1, 'big')
         x1 = (s[i+1]).to_bytes(1, 'big')
@@ -32,17 +32,17 @@ def sender(conn, table):
 # choice between 0 and 3
 def receiver(conn, choice):
     assert(choice >= 0 and choice <= 3)
-    print("Alice waiting for table...")
+    # print("Alice waiting for table...")
     # get garbled table
     table = conn.recv()[1]
-    print("Alice got table.", table)
+    # print("Alice got table.", table)
     # optimization with only 1 key gen once this works
     sks = [ot.send_pks(conn, N, e, (choice & 2) >> 1, '0'),
         ot.send_pks(conn, N, e, choice & 1, '1'),
         ot.send_pks(conn, N, e, choice & 1, '2')]
     labels = [None, None, None]
     e_lists = [None, None, None]
-    print("Alice waiting for encrypted Bob data...")
+    # print("Alice waiting for encrypted Bob data...")
     # wait
     (labels[0], e_lists[0]) = conn.recv()
     (labels[1], e_lists[1]) = conn.recv()
@@ -68,16 +68,16 @@ def receiver(conn, choice):
         s = e_lists[1]
         e_lists[1] = e_lists[2]
         e_lists[2] = s
-    print("Alice decrypting")
+    # print("Alice decrypting")
     s_i = int.from_bytes(ot.decrypt_selection(conn, e_lists[0], sks[0], (choice & 2) >> 1), 'big')
     s_j = int.from_bytes(ot.decrypt_selection(conn, e_lists[1], sks[1], choice & 1), 'big')
     s_k = int.from_bytes(ot.decrypt_selection(conn, e_lists[2], sks[2], choice & 1), 'big')
-    print("Alice s:", s_i, s_j, s_k)
+    # print("Alice s:", s_i, s_j, s_k)
     # reconstruct chosen table entry
     if choice & 2:
-        print("Alice got", s_i ^ s_k ^ table[choice])
+        # print("Alice got", s_i ^ s_k ^ table[choice])
         return s_i ^ s_k ^ table[choice]
-    print("Alice got", s_i ^ s_j ^ table[choice])
+    # print("Alice got", s_i ^ s_j ^ table[choice])
     return s_i ^ s_j ^ table[choice]
 
 def test(table, choice):
@@ -89,3 +89,4 @@ def test(table, choice):
     p_a.join()
     p_b.join()
 
+test([0, 1, 0, 0], 1)
