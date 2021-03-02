@@ -35,8 +35,8 @@ Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier i
 Usage Example: 
 py BeamReader.py {START TIME} {END TIME(NON-INCLUSIVE)} [LIST OF BEAM LABELS]
 py BeamReader.py 5 10 a b c
-Python Packages
 
+#Python Packages
 Package      Version
 ------------ ---------
 crypto       1.4.1
