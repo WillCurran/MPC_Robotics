@@ -30,3 +30,26 @@ Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier i
 - Add sorting network data structure and evaluation
 - link with Moore Machine code
 - interface with input from simulation (add additional layer of sensor parties in other processes)
+
+## Beam Reader:
+Usage Example: 
+py BeamReader.py {START TIME} {END TIME(NON-INCLUSIVE)} [LIST OF BEAM LABELS]
+py BeamReader.py 5 10 a b c
+Python Packages
+
+Package      Version
+------------ ---------
+crypto       1.4.1
+gmpy2        2.0.8
+libnum       1.7.1
+multiprocess 0.70.11.1
+numpy        1.20.1
+phe          1.4.0
+pip          21.0.1
+pycryptodome 3.10.1
+pygame       2.0.1
+PySDL2       0.9.7
+PyYAML       5.4.1
+rsa          4.7.1
+thread6      0.2.0
+websockets   8.1
