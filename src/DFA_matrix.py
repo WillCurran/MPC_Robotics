@@ -105,13 +105,17 @@ class Alice:
     def encrypt_input_i(self):
         self.conn.send(otJC.alice_send_choices_enc(int(self.input[self.row_i]), self.public_key))
 
-    # TODO - fix Alice's lagging output
-    # Solution: output not concatenated to each element. Instead, put it on the back of the pair, so
-    #   we can get the output without another garbled key (for an input which doesn't exist yet)
     # used for getting the output at current state, without advancing to the next state yet.
     # we use this for revealing the output at the last row of the GM
-    def revealColor(self):
-        pass
+    def revealColor(self, GM):
+        random.seed(self.pad)
+        pads = (
+            random.getrandbits(self.k_prime + self.s), 
+            random.getrandbits(self.k_prime + self.s),
+            random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+        )
+        output = pads[2] ^ GM[self.row_i][self.state][2]
+        return output 
 
     # Client retrieves the keys and computes the final result.
     def step3(self, key_enc, GM):
@@ -120,20 +124,25 @@ class Alice:
 
         # get the corresponding random nums
         random.seed(self.pad)
-        pad0_pad1 = (random.getrandbits(self.k_prime + self.s), random.getrandbits(self.k_prime + self.s))
+        pads = (
+            random.getrandbits(self.k_prime + self.s), 
+            random.getrandbits(self.k_prime + self.s),
+            random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+        )
+        # print("state before",self.state)
+        initial_color = pads[2] ^ GM[self.row_i][self.state][2]
         # navigate to the next state (first guess)
-        newstate_concat_output_concat_newpad = k_i ^ pad0_pad1[0] ^ GM[self.row_i][self.state][0]
-        if not hasNTrailingZeros(newstate_concat_output_concat_newpad, self.s):
-            newstate_concat_output_concat_newpad = k_i ^ pad0_pad1[1] ^ GM[self.row_i][self.state][1]
-        (newstate_concat_output_concat_newpad, _) = split_bits(newstate_concat_output_concat_newpad, self.s)
-        # If last row, discard pad since it is meaningless. This is because we lack a next input at this point.
-        if self.row_i == self.n:
-            (state_concat_output, _) = split_bits(newstate_concat_output_concat_newpad, self.k)
-        else:
-            (state_concat_output, self.pad) = split_bits(newstate_concat_output_concat_newpad, self.k)
-        (self.state, output) = split_bits(state_concat_output, MOORE_MACHINE_OUTPUT_BITS)
+        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i][self.state][0]
+        if not hasNTrailingZeros(newstate_concat_newpad, self.s):
+            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i][self.state][1]
+        # strip zeros
+        (newstate_concat_newpad, _) = split_bits(newstate_concat_newpad, self.s)
+        (self.state, self.pad) = split_bits(newstate_concat_newpad, self.k)
         self.row_i += 1
-        return output
+        # color at the resulting state
+        final_color = self.revealColor(GM)
+        
+        return (initial_color, final_color)
 
     def init_state_and_pad(self, init_state_index, init_pad):
         self.state = init_state_index
@@ -146,7 +155,7 @@ class Alice:
         self.n = n
         self.q = dfa['states']
         self.k = k
-        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1) + MOORE_MACHINE_OUTPUT_BITS
+        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
         self.s = s
         self.state = None
         self.pad = None
@@ -175,8 +184,8 @@ class Bob:
     def step2(self, dfa, n, k):
         #Generating random pads and a permuted DFA matrix PMΓ
         q = dfa['states']
-        k_prime = (k + math.floor(math.log(q, 2)) + 1) + MOORE_MACHINE_OUTPUT_BITS
-        GM = [[(0,0)] * q for i in range(n + 1)]
+        k_prime = (k + math.floor(math.log(q, 2)) + 1)
+        GM = [[(0,0,0)] * q for i in range(n + 1)]
         #Server generates n + 1 random key pairs for garbling:
         a = random.sample(range(0,2**k_prime), n + 1)
         b = random.sample(range(0,2**k_prime), n + 1)
@@ -194,30 +203,33 @@ class Bob:
             for j in range (0, q):
                 # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
                 # right now we just have the Moore Machine output copied twice
-                a = numConcat(PM[i][j][0], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
-                a = numConcat(a, PAD[i+1][PM[i][j][0] ], k)
-                b = numConcat(PM[i][j][1], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
-                b = numConcat(b, PAD[i+1][PM[i][j][1] ], k)
+                # a = numConcat(PM[i][j][0], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
+                a = numConcat(PM[i][j][0], PAD[i+1][PM[i][j][0] ], k)
+                # b = numConcat(PM[i][j][1], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
+                b = numConcat(PM[i][j][1], PAD[i+1][PM[i][j][1] ], k)
+                c = PM[i][j][2]
                 a = a ^ K[i][0]
                 b = b ^ K[i][1]
-                GM[i][j] = (a,b)
+                GM[i][j] = (a,b,c)
                 # Pseudo Random Number Generator G 
                 # ****NOT SECURE BECAUSE SYSTEM RAND DOES NOT HAVE A SET SEED FUNCTION*****
                 # Would need to replace with a cryptographically secure pseudo-random number generator.
                 random.seed(PAD[i][j])
                 a = random.getrandbits(k_prime)
                 b = random.getrandbits(k_prime)
-                pad = (a,b)
+                c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+                pad = (a,b,c)
                 a = GM[i][j][0] ^ pad[0]
                 b = GM[i][j][1] ^ pad[1]
-                GM[i][j] = (a,b)
+                c = GM[i][j][2] ^ pad[2]
+                GM[i][j] = (a,b,c)
         K_enc = K # TODO - encrypt with OT public key and transfer via OT
         init_state = PER[0][dfa['initial'] ]
         init_pad = PAD[0][init_state]
         return (M, PER, PM, K_enc, GM, init_state, init_pad) # TODO - remove M, PER, PM when not testing/debugging
 
     def append_GM_row(self):
-        new_gm_row = [(0,0)] * self.q
+        new_gm_row = [(0,0,0)] * self.q
         # Server generates 1 random keypair for garbling:
         # (This is a cryptographically secure RNG, in the order of security bits)
         a = secrets.randbits(self.k_prime + self.s)
@@ -233,23 +245,26 @@ class Bob:
         for j in range (0, self.q):
             # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
             # right now we just have the Moore Machine output copied twice
-            a = numConcat(new_pm_row[j][0], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
-            a = numConcat(a, next_pad_row[new_pm_row[j][0] ], self.k)
+            # a = numConcat(new_pm_row[j][0], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
+            a = numConcat(new_pm_row[j][0], next_pad_row[new_pm_row[j][0] ], self.k)
             a = numConcat(a, 0, self.s)
-            b = numConcat(new_pm_row[j][1], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
-            b = numConcat(b, next_pad_row[new_pm_row[j][1] ], self.k)
+            # b = numConcat(new_pm_row[j][1], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
+            b = numConcat(new_pm_row[j][1], next_pad_row[new_pm_row[j][1] ], self.k)
             b = numConcat(b, 0, self.s) 
             a = a ^ garbled_keypair[0]
             b = b ^ garbled_keypair[1]
-            new_gm_row[j] = (a,b)
+            c = new_pm_row[j][2]
+            new_gm_row[j] = (a,b,c)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[len(self.PAD) - 1][j])
             a = random.getrandbits(self.k_prime + self.s)
             b = random.getrandbits(self.k_prime + self.s)
-            pad = (a,b)
+            c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+            pad = (a,b,c)
             a = new_gm_row[j][0] ^ pad[0]
             b = new_gm_row[j][1] ^ pad[1]
-            new_gm_row[j] = (a,b)
+            c = new_gm_row[j][2] ^ pad[2]
+            new_gm_row[j] = (a,b,c)
         garbled_keypair_enc = garbled_keypair # TODO - encrypt with OT public key and transfer via OT
 
         self.M.append(self.m_row)
@@ -273,8 +288,8 @@ class Bob:
 
         # start with 1 row of M, 1 row of PM, 1 row GM, 2 rows PER, 2 rows PAD, 1 garbled keypair
         self.q = dfa['states']
-        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1) + MOORE_MACHINE_OUTPUT_BITS
-        new_gm_row = [(0,0)] * self.q
+        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
+        new_gm_row = [(0,0,0)] * self.q
         # Server generates 1 random keypair for garbling:
         a = secrets.randbits(self.k_prime + self.s)
         b = secrets.randbits(self.k_prime + self.s)
@@ -290,23 +305,26 @@ class Bob:
         for j in range (0, self.q):
             # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
             # right now we just have the Moore Machine output copied twice
-            a = numConcat(self.PM[0][j][0], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
-            a = numConcat(a, self.PAD[1][self.PM[0][j][0] ], k)
+            # a = numConcat(self.PM[0][j][0], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
+            a = numConcat(self.PM[0][j][0], self.PAD[1][self.PM[0][j][0] ], k)
             a = numConcat(a, 0, self.s)
-            b = numConcat(self.PM[0][j][1], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
-            b = numConcat(b, self.PAD[1][self.PM[0][j][1] ], k)
+            # b = numConcat(self.PM[0][j][1], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
+            b = numConcat(self.PM[0][j][1], self.PAD[1][self.PM[0][j][1] ], k)
             b = numConcat(b, 0, self.s)
             a = a ^ garbled_keypair[0]
             b = b ^ garbled_keypair[1]
-            new_gm_row[j] = (a,b)
+            c = self.PM[0][j][2]
+            new_gm_row[j] = (a,b,c)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[0][j])
             a = random.getrandbits(self.k_prime + self.s)
             b = random.getrandbits(self.k_prime + self.s)
-            pad = (a,b)
+            c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+            pad = (a,b,c)
             a = new_gm_row[j][0] ^ pad[0]
             b = new_gm_row[j][1] ^ pad[1]
-            new_gm_row[j] = (a,b)
+            c = new_gm_row[j][2] ^ pad[2]
+            new_gm_row[j] = (a,b,c)
 
         self.init_state = self.PER[0][dfa['initial'] ]
         self.init_pad = self.PAD[0][self.init_state]

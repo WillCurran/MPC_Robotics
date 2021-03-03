@@ -58,7 +58,10 @@ def runAlice(conn, alice_input, n, k, s, moore_machine):
         alice.encrypt_input_i()
         # wait for garbled keys
         strings_enc = conn.recv()
-        print("Alice Garbled Eval:", alice.step3(strings_enc, GM))
+        output = alice.step3(strings_enc, GM)
+        if i == 0:
+            print("Alice Garbled Eval (initial state):", output[0])
+        print("Alice Garbled Eval:", output[1])
 
 def test():
     moore_machine = {'alphabet': [0, 1],
