@@ -109,12 +109,11 @@ class Alice:
     # we use this for revealing the output at the last row of the GM
     def revealColor(self, GM):
         random.seed(self.pad)
-        pads = (
-            random.getrandbits(self.k_prime + self.s), 
-            random.getrandbits(self.k_prime + self.s),
-            random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
-        )
-        output = pads[2] ^ GM[self.row_i][self.state][2]
+        # throw away first two pads
+        for i in range(2):
+            random.getrandbits(self.k_prime + self.s)
+        pad = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+        output = pad ^ GM[self.row_i][self.state][2]
         return output 
 
     # Client retrieves the keys and computes the final result.
@@ -126,11 +125,8 @@ class Alice:
         random.seed(self.pad)
         pads = (
             random.getrandbits(self.k_prime + self.s), 
-            random.getrandbits(self.k_prime + self.s),
-            random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
+            random.getrandbits(self.k_prime + self.s)
         )
-        # print("state before",self.state)
-        initial_color = pads[2] ^ GM[self.row_i][self.state][2]
         # navigate to the next state (first guess)
         newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i][self.state][0]
         if not hasNTrailingZeros(newstate_concat_newpad, self.s):
@@ -140,9 +136,7 @@ class Alice:
         (self.state, self.pad) = split_bits(newstate_concat_newpad, self.k)
         self.row_i += 1
         # color at the resulting state
-        final_color = self.revealColor(GM)
-        
-        return (initial_color, final_color)
+        return self.revealColor(GM)
 
     def init_state_and_pad(self, init_state_index, init_pad):
         self.state = init_state_index
