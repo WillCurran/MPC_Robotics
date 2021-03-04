@@ -17,50 +17,36 @@ class GateType(Enum):
     INPUT_BUS = 4
     OUTPUT_BUS = 5
 
-## A Msg is used to communicate between parties
-class Msg:
-    def __init__(self, wire_vals, party):
-        self.wire_vals = wire_vals
-        self.party = party
-
 ## A Wire is a directed edge from one gate to another, along which a value is carried.
 ## We will use the Wire class in the Circuit's adjacency list
 class Wire:
-    # id_counter = 0
-
     def __init__(self, _value=None, _source=None, _destination=None):
-        # self.id = id_counter
         self.value = _value
         self.source = _source
         self.destination = _destination
-        # Wire.id_counter += 1
 
 ## A Gate is an implementation of a logic gate, with inbound and outbound Wires.
 ## Implemented as a Doubly-Linked Adjacency List
 class Gate:
-
     def __init__(self, _type=GateType.NULL):
         self.type = _type
         self.inbound_wires = []
         self.outbound_wires = []
         # self.visited = False
     
-    def evalAndOnBitN(self, conn, ipc_lock, bit_i, q):
+    def evalAndOnBitN(self, conn, ipc_lock, bit_i, sender_file, recver_file):
         # get n-th bit of inbound wires. if bit is there, we're dealing with a 1. else 0.
         mask = utils.bitmask(bit_i, bit_i)
-        # itc_lock.acquire()
         bit1 = int((mask & self.inbound_wires[0].value) > 0)
         bit0 = int((mask & self.inbound_wires[1].value) > 0)
-        # itc_lock.release()
 
         # other party has already encountered the gate
         if conn.poll():
             # perform 1 out of 4 OT with other party to get table
-            # send public keys, then wait for encrypted 
             # get table message, select proper share
             choice = bit1 * 2 + bit0
-            res = ot4.receiver(conn, choice)
-            q.put(res << bit_i)
+            res = ot4.receiver(conn, choice, recver_file)
+            return res << bit_i
         # other party has not encountered the gate yet
         else:
             # one of us gets to make the table
@@ -69,8 +55,8 @@ class Gate:
             if conn.poll():
                 ipc_lock.release()
                 choice = bit1 * 2 + bit0
-                res = ot4.receiver(conn, choice)
-                q.put(res << bit_i)
+                res = ot4.receiver(conn, choice, recver_file)
+                return res << bit_i
             else:
                 # Create table and send it over
                 r = secrets.randbits(1)
@@ -79,12 +65,13 @@ class Gate:
                             r ^ ((bit1 ^ 1) & (bit0 ^ 0)),
                             r ^ ((bit1 ^ 1) & (bit0 ^ 1))
                         ]
-                ot4.sender(conn, table)
+                s = ot4.sender_sends_table(conn, table, sender_file)
                 ipc_lock.release()
-                q.put(r << bit_i)
+                ot4.sender_gets_choices_sends_corrections(conn, s, sender_file)
+                return r << bit_i
 
     # return the gate function evaluation for this gate. Assumes 2 inputs
-    def gate_function_eval(self, connections, ipc_locks, circuit_owner, n_bits):
+    def gate_function_eval(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
         if self.type == GateType.NOT:
             if circuit_owner == "A":                                                # predetermined party (or requires coordination)
                 return ~self.inbound_wires[0].value & utils.bitmask(0, n_bits-1)    # keep sign, flip all other pertinent bits
@@ -94,27 +81,14 @@ class Gate:
             return self.inbound_wires[0].value ^ self.inbound_wires[1].value
         
         elif self.type == GateType.AND:
-            q = queue.Queue()
-            # spawn a thread for each bit to execute OTs in parallel
-            print("Process:", multiprocessing.current_process().name, "trying to acquire locks...")
-            # ipc_locks[0].acquire()
-            print("Process:", multiprocessing.current_process().name, "acquired locks.")
-            print("Spawning threads for each bit. Total of", n_bits, "threads.")
-            # ipc_locks[0].release()
-            threads = [threading.Thread(target=self.evalAndOnBitN, args=(connections[i], ipc_locks[i], i, q,))
-                        for i in range(n_bits)]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
             val = 0
-            while(not q.empty()):
-                val |= q.get()
+            for i in range(n_bits):
+                val |= self.evalAndOnBitN(conn, ipc_lock, i, sender_file, recver_file)
             return val
         return -1                                   # gate is of type NULL
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evaluate(self, connections, ipc_locks, circuit_owner, n_bits):
+    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
         if self.type == GateType.INPUT_BUS or self.type == GateType.OUTPUT_BUS:
             assert(self.canEvaluate())
             # pipe info thru - all inbound wires are of same value (is this property fully asserted at insertion?)
@@ -128,10 +102,10 @@ class Gate:
             else:
                 assert(self.inbound_wires[0].value != None) # debug
                 assert(self.inbound_wires[1].value != None) # debug
-            gate_output = self.gate_function_eval(connections, ipc_locks, circuit_owner, n_bits)
-            # ipc_locks[0].acquire()
-            # print(circuit_owner, ": Value for gateType", self.type, "computed to be", gate_output)
-            # ipc_locks[0].release()
+            gate_output = self.gate_function_eval(
+                conn, ipc_lock, circuit_owner, n_bits, 
+                sender_file, recver_file
+            )
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
 
@@ -152,11 +126,14 @@ class GarbledCircuit(Gate):
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
-    def evaluate(self, connections, ipc_locks, circuit_owner, n_bits):
+    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
         for gate in self.gates:
             # wait to execute a circuit until all components are ready.
             if gate.canEvaluate():
-                gate.evaluate(connections, ipc_locks, circuit_owner, n_bits)
+                gate.evaluate(
+                    conn, ipc_lock, circuit_owner, n_bits, 
+                    sender_file, recver_file
+                )
                 # wipe inbound wires if circuit needs to be reused
                 if isinstance(gate, GarbledCircuit):
                     gate.wipeInboundWires()

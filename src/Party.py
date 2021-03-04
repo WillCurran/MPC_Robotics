@@ -17,6 +17,8 @@ class Party:
         self.time_bitmask = utils.bitmask(self.n_symbol_bits, self.n_time_bits + self.n_symbol_bits - 1)
         self.symbol_bitmask = utils.bitmask(0, self.n_symbol_bits - 1)
         self.max_val = (1 << (self.n_symbol_bits + self.n_time_bits)) - 1
+        self.sender_file = None
+        self.recver_file = None
 
     def setGC(self, gc_comp, gc_exch, gc_eq):
         self.gc_comp = gc_comp
@@ -25,6 +27,10 @@ class Party:
 
     def setSortingNetwork(self, network):
         self.network = network
+
+    def setOTFiles(self, sender_file_, recver_file_):
+        self.sender_file = sender_file_
+        self.recver_file = recver_file_
 
     def configEquality(self, i, j):
         for k in range(self.n_time_bits):
@@ -35,12 +41,12 @@ class Party:
         # for i in range(4):
         #     print(self.gc_eq.input_busses[i].outbound_wires[0].value)
 
-    def executeEquality(self, connections, q, ipc_locks):
-        self.configEquality(0, 1)
-        self.gc_eq.evaluate(connections, ipc_locks, self.id, 1)
-        ipc_locks[0].acquire()
-        print(self.id, self.gc_eq.output_busses[0].inbound_wires[0].value)
-        ipc_locks[0].release()
+    # def executeEquality(self, connections, q, ipc_lock):
+    #     self.configEquality(0, 1)
+    #     self.gc_eq.evaluate(connections, ipc_lock, self.id, 1)
+    #     ipc_lock[0].acquire()
+    #     print(self.id, self.gc_eq.output_busses[0].inbound_wires[0].value)
+    #     ipc_lock[0].release()
 
     # i and j are indices of array we wish to compare
     # set wires to time values (extract time bits)
@@ -64,9 +70,12 @@ class Party:
 
     # assumes one other party is also running this program concurrently in another process.
     # evaluate both compare and exchange gates. Update values accordingly.
-    def compareExchange(self, connections, ipc_locks, i, j):
+    def compareExchange(self, connections, ipc_lock, i, j):
         self.configCompare(i, j)
-        self.gc_comp.evaluate(connections, ipc_locks, self.id, self.n_time_bits)
+        self.gc_comp.evaluate(
+            connections, ipc_lock, self.id, self.n_time_bits, 
+            self.sender_file, self.recver_file
+        )
         if self.gc_comp.output_busses[2].inbound_wires[0].value > 0:
             self.comparison_bit = self.max_val
         else:
@@ -79,7 +88,10 @@ class Party:
 
         # connections[0] pipe end is ready, since compare circuit must have been computed at this point.
         self.configExchange(i, j)
-        self.gc_exch.evaluate(connections, ipc_locks, self.id, self.n_time_bits+self.n_symbol_bits)
+        self.gc_exch.evaluate(
+            connections, ipc_lock, self.id, self.n_time_bits+self.n_symbol_bits,
+            self.sender_file, self.recver_file
+        )
         self.my_shares[i] = self.gc_exch.output_busses[0].inbound_wires[0].value
         self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
         # print(self.id, self.my_shares[i], self.my_shares[j])
@@ -87,11 +99,11 @@ class Party:
     # TODO - busy waiting issue with IPC!
     # execute a sort with another party on my sorting network
     # assume 2 bits of each element in list (1 time || 1 symbol) - run 2 GMW instances in parallel
-    def executeSort(self, connections, q, ipc_locks):
+    def executeSort(self, connections, q, ipc_lock):
         for level in self.network.swaps:
             for swap in level:
-                self.compareExchange(connections, ipc_locks, swap[0], swap[1])
-        # q.put(self.my_shares)
+                self.compareExchange(connections, ipc_lock, swap[0], swap[1])
+        q.put(self.my_shares)
 
     def executeMooreMachineEval(self, conn, k, s):
         moore_machine = {'alphabet': [0, 1],
@@ -115,16 +127,16 @@ class Party:
             mm.runBob(conn, moore_machine, shared_input_str, n, k, s, '')
 
     # execute sort and then moore machine eval
-    def executePipeline(self, connections, q, ipc_locks, k, s):
-        self.executeSort(connections, q, ipc_locks)
+    def executePipeline(self, connections, q, ipc_lock, k, s):
+        self.executeSort(connections, q, ipc_lock)
         # self.executeMooreMachineEval(connections[0], k, s)
 
     # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
-    # def equality(self, connections, ipc_locks, a, b, n_bits)
+    # def equality(self, connections, ipc_lock, a, b, n_bits)
     #     return 0
     
     # # compare two numbers a, b (indices i, j of start of bit string we're looking at)
-    # def compare(self, connections, ipc_locks, a, b, i, j, n_bits_i, n_bits_j):
+    # def compare(self, connections, ipc_lock, a, b, i, j, n_bits_i, n_bits_j):
     #     # just compute a greater than circuit for one bit
     #     if(n_bits_i == n_bits_j == 1):
     #         bit_a = a & utils.bitmask(i,i) >> i
@@ -133,10 +145,10 @@ class Party:
     #             wire.value = bit_a
     #         for wire in self.gc_comp.gates[1].outbound_wires:
     #             wire.value = bit_b
-    #         self.gc_comp.evaluate(connections, ipc_locks, self.id, self.n_time_bits)
+    #         self.gc_comp.evaluate(connections, ipc_lock, self.id, self.n_time_bits)
     #         return self.gc_comp.gates[-1].inbound_wires[2].value
     #     # spawn a thread for each, not quite this simple.
-    #     return self.compare(connections, ipc_locks, a, b, n_bits//2, i, j + n_bits//2) ^ 
-    #         self.equality(connections, ipc_locks, a, b, n_bits, i, j) & 
-    #         self.compare(connections, ipc_locks, a, b, n_bits//2, j, j - n_bits//2)
+    #     return self.compare(connections, ipc_lock, a, b, n_bits//2, i, j + n_bits//2) ^ 
+    #         self.equality(connections, ipc_lock, a, b, n_bits, i, j) & 
+    #         self.compare(connections, ipc_lock, a, b, n_bits//2, j, j - n_bits//2)
     

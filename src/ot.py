@@ -21,8 +21,11 @@ import sys
 # choice is given by the swapping of the key order
 def send_pks(conn, N, e, choice, label):
     sk_alice = RSA.generate(N)
-    # modulus must be odd
-    rand_modulus = 2*(secrets.randbits(N)//2)+1
+    # modulus must be odd, and greater than e.
+    rand_modulus = -1
+    while rand_modulus < e:
+        # print("here")
+        rand_modulus = 2*(secrets.randbits(N)//2)+1
     garbage_key = RSA.construct((rand_modulus, 65537))
     # public keys in bytes format
     pk = sk_alice.publickey().export_key('PEM')
@@ -63,7 +66,9 @@ def bob_exec_example_OT(conn, x0, x1, N):
     print("Bob done")
 
 def test(x0, x1, choice):
-    N = 2048
+    #DEBUG
+    N = 1024
+    # N = 2048
     e = 65537
     parent_conn, child_conn = Pipe()
     p_a = Process(target=alice_exec_example_OT, args=(parent_conn, choice, N, e,))
