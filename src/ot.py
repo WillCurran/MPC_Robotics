@@ -12,27 +12,21 @@
 
 import secrets
 from multiprocessing import Process, Pipe
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 import sys
 
 
 # Alice generates RSA keypair and sends bob one legitimate key and one garbage one.
 # choice is given by the swapping of the key order
 def send_pks(conn, N, e, choice, label):
-    sk_alice = rsa.generate_private_key(public_exponent=e, key_size=N)
-    # TODO - not secure yet. need to be able to generate public key which looks
-    # indistinguishable without knowing a corresponding secret key
-    garbage_key = rsa.generate_private_key(public_exponent=e, key_size=N)
-    # public key in bytes format, which is picklable/sendable
-    pk = sk_alice.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    pk_prime = garbage_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
+    sk_alice = RSA.generate(N)
+    # modulus must be odd
+    rand_modulus = 2*(secrets.randbits(N)//2)+1
+    garbage_key = RSA.construct((rand_modulus, 65537))
+    # public keys in bytes format
+    pk = sk_alice.publickey().export_key('PEM')
+    pk_prime = garbage_key.export_key('PEM')
     if choice:
         conn.send((label, (pk_prime, pk)))
     else:
@@ -41,36 +35,18 @@ def send_pks(conn, N, e, choice, label):
 
 # Bob encrypts his messages and sends them back
 def send_msgs_enc(conn, _pk0, _pk1, x0, x1, N, label):
-    pk0 = serialization.load_pem_public_key(_pk0)
-    pk1 = serialization.load_pem_public_key(_pk1)
-    e0 = pk0.encrypt(
-        x0,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    e1 = pk1.encrypt(
-        x1,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
+    pk0 = RSA.import_key(_pk0)
+    pk1 = RSA.import_key(_pk1)
+    cipher0 = PKCS1_OAEP.new(pk0)
+    cipher1 = PKCS1_OAEP.new(pk1)
+    e0 = cipher0.encrypt(x0)
+    e1 = cipher1.encrypt(x1)
     conn.send((label, [e0, e1]))
 
 # Alice decrypts the message of her choice
 def decrypt_selection(conn, e_list, sk_alice, choice):
-    return sk_alice.decrypt(
-            e_list[choice],
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()), 
-                algorithm=hashes.SHA256(), 
-                label=None
-            )
-        )
+    cipher = PKCS1_OAEP.new(sk_alice)
+    return cipher.decrypt(e_list[choice])
 
 def alice_exec_example_OT(conn, choice, N, e):
     print("alice reporting for duty!")

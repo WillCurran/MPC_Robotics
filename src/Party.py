@@ -84,6 +84,7 @@ class Party:
         self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
         # print(self.id, self.my_shares[i], self.my_shares[j])
 
+    # TODO - busy waiting issue with IPC!
     # execute a sort with another party on my sorting network
     # assume 2 bits of each element in list (1 time || 1 symbol) - run 2 GMW instances in parallel
     def executeSort(self, connections, q, ipc_locks):
@@ -116,7 +117,7 @@ class Party:
     # execute sort and then moore machine eval
     def executePipeline(self, connections, q, ipc_locks, k, s):
         self.executeSort(connections, q, ipc_locks)
-        self.executeMooreMachineEval(connections[0], k, s)
+        # self.executeMooreMachineEval(connections[0], k, s)
 
     # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
     # def equality(self, connections, ipc_locks, a, b, n_bits)

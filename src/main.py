@@ -1,6 +1,8 @@
 import utils
 import copy
+import multiprocessing
 from multiprocessing import Process, Pipe, Queue, Lock
+import logging
 import gmw
 from sorting_network import *
 from Party import *
@@ -47,6 +49,8 @@ if __name__ == '__main__':
     k = 8 # security parameter
     s = 16 # statistical security parameter
 
+    mpl = multiprocessing.log_to_stderr()
+    mpl.setLevel(logging.INFO)
     # One pipe for each bit. Will have separate threads of same process communicating 
     # with threads in other process during GMW AND gates. Or we could use a mutex with one pipe?
     connections = [Pipe() for i in range(n_time_bits + n_symbol_bits)]

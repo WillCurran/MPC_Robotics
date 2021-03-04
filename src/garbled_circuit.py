@@ -1,4 +1,5 @@
 from enum import Enum
+import multiprocessing
 from multiprocessing import Process, Pipe, Queue
 import secrets
 import utils
@@ -95,6 +96,11 @@ class Gate:
         elif self.type == GateType.AND:
             q = queue.Queue()
             # spawn a thread for each bit to execute OTs in parallel
+            print("Process:", multiprocessing.current_process().name, "trying to acquire locks...")
+            # ipc_locks[0].acquire()
+            print("Process:", multiprocessing.current_process().name, "acquired locks.")
+            print("Spawning threads for each bit. Total of", n_bits, "threads.")
+            # ipc_locks[0].release()
             threads = [threading.Thread(target=self.evalAndOnBitN, args=(connections[i], ipc_locks[i], i, q,))
                         for i in range(n_bits)]
             for thread in threads:
