@@ -1,0 +1,53 @@
+maxTime=4 nSensors=3 nRounds=3
+# a has one reading
+11||00 = 12 --> split = 1, 13
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 8, 7
+11||11 = 15 --> split = 8, 7
+# b has two readings
+01||01 = 5 --> split = 4, 1
+10||01 = 9 --> split = 2, 11
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 0, 15
+# c has no readings
+11||11 = 15 --> split = 0, 15
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 7, 8
+
+# a has one reading
+11||00 = 12 --> split = 1, 13
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 8, 7
+11||11 = 15 --> split = 8, 7
+# b has two readings
+01||01 = 5 --> split = 4, 1
+10||01 = 9 --> split = 2, 11
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 0, 15
+# c has no readings
+11||11 = 15 --> split = 0, 15
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 7, 8
+
+# a has one reading
+11||00 = 12 --> split = 1, 13
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 8, 7
+11||11 = 15 --> split = 8, 7
+# b has two readings
+01||01 = 5 --> split = 4, 1
+10||01 = 9 --> split = 2, 11
+11||11 = 15 --> split = 10, 5
+11||11 = 15 --> split = 0, 15
+# c has no readings
+11||11 = 15 --> split = 0, 15
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 6, 9
+11||11 = 15 --> split = 7, 8
+
+expected output: 
+    [1, 1, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3], 
+    [1, 1, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3], 
+    [1, 1, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3]
