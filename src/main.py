@@ -226,10 +226,11 @@ if __name__ == '__main__':
                 print("ERROR QUEUE SIZE")
                 exit(1)
             res2 = q.get()
+            # with times for debug:
             # output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
             # print("list after sort", output_list)
             output_list = [(num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-            print(output_list)
+            print("Symbol Stream", i, ":", output_list)
         print("Took", end-start, "seconds.")
         alice_sender_file.close()
         alice_recver_file.close()

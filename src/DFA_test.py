@@ -2,12 +2,31 @@ from DFA_matrix import *
 import time
 from multiprocessing import Process, Pipe, Queue, Lock
 
+
 # conn is a bidirectional Pipe() open with Alice
 # Bob's input in string form
 # n is length of input
 # k, s security parameters
-# TODO - remove xor_input
-def runBob(conn, moore_machine, bob_input, n, k, s, xor_input):
+def runBob(conn, moore_machine, bob_input, n, k, s):
+    # recv alice's public key
+    alice_pk = conn.recv()
+    bob = Bob(conn, bob_input, moore_machine, alice_pk, k, s) # Bob creates garbled matrix, sends init state&pad
+
+    for i in range(n):
+        bob.append_GM_row()
+    # send GM to Alice
+    conn.send(bob.GM)
+
+    for i in range(n):
+        # bob must now receive choices_enc
+        choices_enc = conn.recv()
+        bob.send_garbled_key(choices_enc, i)
+
+# conn is a bidirectional Pipe() open with Alice
+# Bob's input in string form
+# n is length of input
+# k, s security parameters
+def runBobDebug(conn, moore_machine, bob_input, n, k, s, xor_input):
     # recv alice's public key
     alice_pk = conn.recv()
     bob = Bob(conn, bob_input, moore_machine, alice_pk, k, s) # Bob creates garbled matrix, sends init state&pad
@@ -46,7 +65,27 @@ def runBob(conn, moore_machine, bob_input, n, k, s, xor_input):
 # Alice's input in string form
 # n is length of input
 # k, s security parameters
-def runAlice(conn, alice_input, n, k, s, moore_machine):
+def runAlice(conn, q, alice_input, n, k, s):
+    alice = Alice(conn, q, alice_input, n, k, s) # Alice creates keypair and sends public key to Bob
+    # Alice waits for GM, initial state and pad from Bob
+    (init_state, init_pad) = conn.recv()
+    GM = conn.recv()
+    alice.init_state_and_pad(init_state, init_pad)
+    color_stream = []
+    color_stream.append(alice.revealColor(GM))
+    for i in range(n):
+        # send encrypted choice
+        alice.encrypt_input_i()
+        # wait for garbled keys
+        strings_enc = conn.recv()
+        color_stream.append(alice.step3(strings_enc, GM))
+    print("Color stream:", color_stream)
+
+# conn is a bidirectional Pipe() open with Bob
+# Alice's input in string form
+# n is length of input
+# k, s security parameters
+def runAliceDebug(conn, alice_input, n, k, s, moore_machine):
     alice = Alice(conn, moore_machine, alice_input, n, k, s) # Alice creates keypair and sends public key to Bob
     # Alice waits for GM, initial state and pad from Bob
     (init_state, init_pad) = conn.recv()

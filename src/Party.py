@@ -94,12 +94,11 @@ class Party:
     # execute a sort with another party on my sorting network
     # assume 2 bits of each element in list (1 time || 1 symbol) - run 2 GMW instances in parallel
     def executeSort(self, connections, q, ipc_lock, round_num):
-        for level in self.network.swaps:
-            for swap in level:
-                self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num)
+        for swap in self.network.swaps:
+            self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num)
         q.put(self.my_shares[round_num])
 
-    def executeMooreMachineEval(self, conn, k, s):
+    def executeMooreMachineEval(self, conn, k, s, round_num):
         moore_machine = {'alphabet': [0, 1],
         'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
         'initial': 0,
@@ -109,39 +108,42 @@ class Party:
         shared_input_str = ''
         # leading 0s in front of bits
         bit_format = '0' + str(self.n_symbol_bits) + 'b'
-        for share in self.my_shares:
+        for share in self.my_shares[round_num]:
             shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
         # print('bit format', bit_format)
         # print("symbols are", [share & utils.bitmask(0, self.n_symbol_bits) for share in self.my_shares])
-        print(self.id, "Input is", shared_input_str)
+        # print(self.id, "Input is", shared_input_str)
         n = len(shared_input_str)
         if self.id == "A":
-            mm.runAlice(conn, shared_input_str, n, k, s, moore_machine)
+            mm.runAlice(conn, moore_machine['states'], shared_input_str, n, k, s)
         else:
-            mm.runBob(conn, moore_machine, shared_input_str, n, k, s, '')
+            mm.runBob(conn, moore_machine, shared_input_str, n, k, s)
 
     # execute sort and then moore machine eval
     def executePipeline(self, connections, q, ipc_lock, k, s):
         # for all rounds
         for i in range(len(self.my_shares)):
+            if self.id == "A":
+                print("Sort, round", i, "...")
             self.executeSort(connections, q, ipc_lock, i)
-            # self.executeMooreMachineEval(connections[0], k, s)
+            if self.id == "A":
+                print("Moore machine, round", i, "...")
+            self.executeMooreMachineEval(connections, k, s, i)
 
     def executeSortDummy(self):
-        for level in self.network.swaps:
-            for swap in level:
-                i = swap[0]
-                j = swap[1]
-                self.configCompare(i, j)
-                self.gc_comp.evaluate_dummy(self.n_time_bits)
-                if self.gc_comp.output_busses[0].inbound_wires[0].value > 0:
-                    self.comparison_bit = self.max_val
-                else:
-                    self.comparison_bit = 0
-                self.configExchange(i, j)
-                self.gc_exch.evaluate_dummy(self.n_time_bits+self.n_symbol_bits)
-                self.my_shares[i] = self.gc_exch.output_busses[0].inbound_wires[0].value
-                self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
+        for swap in self.network.swaps:
+            i = swap[0]
+            j = swap[1]
+            self.configCompare(i, j)
+            self.gc_comp.evaluate_dummy(self.n_time_bits)
+            if self.gc_comp.output_busses[0].inbound_wires[0].value > 0:
+                self.comparison_bit = self.max_val
+            else:
+                self.comparison_bit = 0
+            self.configExchange(i, j)
+            self.gc_exch.evaluate_dummy(self.n_time_bits+self.n_symbol_bits)
+            self.my_shares[i] = self.gc_exch.output_busses[0].inbound_wires[0].value
+            self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
         output_list = [(num >> self.n_symbol_bits, num & utils.bitmask(0, self.n_symbol_bits-1)) for num in self.my_shares]
         print(output_list)
 

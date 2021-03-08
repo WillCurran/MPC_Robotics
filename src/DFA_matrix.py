@@ -142,12 +142,12 @@ class Alice:
         self.state = init_state_index
         self.pad = init_pad
 
-    def __init__(self, conn, dfa, alice_input, n, k, s):
+    def __init__(self, conn, q, alice_input, n, k, s):
         # we need an extra input (can be meaningless) to get the output at the last state
         # this is because the garbled key for the last row must exist, even if it doesn't need to point to the correct delta.
         self.input = alice_input + str(secrets.randbits(1))
         self.n = n
-        self.q = dfa['states']
+        self.q = q
         self.k = k
         self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
         self.s = s
@@ -293,7 +293,7 @@ class Bob:
         # the best we can do is to start with cryptographically secure pad, for now.
         # later, we must use a cryptographically secure PRNG which supports a setseed operation.
         self.PAD = [[secrets.randbits(self.k) for j in range(self.q)] for i in range(2)]
-        print(self.PAD)
+        # print(self.PAD)
         self.PER = genPerm(2, self.q)
         self.PM = permDfaMat([self.m_row], self.PER, 1, self.q)
         for j in range (0, self.q):
