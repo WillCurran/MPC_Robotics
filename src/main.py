@@ -63,13 +63,8 @@ def comparison_test_battery():
     if not failure:
         print("Test cases passed!")
 
-
-
 # TODO - organize the bulk of the following code into functions to make the main more readable
 
-# create a test circuit and run it across 2 parties with GMW
-gc_exch = gmw.exchangeCirc()
-gc_comp = gmw.comparatorCirc()
 # open files of precomputed random OTs
 alice_sender_file = open('a.txt', 'r')
 alice_recver_file = open('b1.txt', 'r')
@@ -83,7 +78,8 @@ if mode != 'T':
     times = input("Input times (space delimited): ")
     symbols = input("Input symbols (space delimited): ")
 
-    gc_eq = gmw.equalityCirc(n_time_bits)
+    gc_exch = gmw.exchangeCirc()
+    gc_comp = gmw.greaterThanCirc(n_time_bits)
     max_time = 2**n_time_bits - 1
     max_symbol = 2**n_symbol_bits - 1
     times = [int(s) if int(s) <= max_time else exit(1) for s in times.split(' ')]
@@ -105,8 +101,8 @@ if mode != 'T':
     # both parties own the same gc, but will alter values
     alice = Party(n_time_bits, n_symbol_bits, alice_input, "A")
     bob = Party(n_time_bits, n_symbol_bits, bob_input, "B")
-    alice.setGC(gc_comp, gc_exch, gc_eq)
-    bob.setGC(copy.deepcopy(gc_comp), copy.deepcopy(gc_exch), copy.deepcopy(gc_eq))
+    alice.setGC(gc_comp, gc_exch, None)
+    bob.setGC(copy.deepcopy(gc_comp), copy.deepcopy(gc_exch), None)
     # both own same network, will not alter values
     alice.setSortingNetwork(network)
     bob.setSortingNetwork(network)

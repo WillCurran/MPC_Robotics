@@ -75,11 +75,12 @@ class Party:
     # evaluate both compare and exchange gates. Update values accordingly.
     def compareExchange(self, connections, ipc_lock, i, j):
         self.configCompare(i, j)
+        # 1 bit wires on a tournament-wise evaluation!
         self.gc_comp.evaluate(
-            connections, ipc_lock, self.id, self.n_time_bits, 
+            connections, ipc_lock, self.id, 1, 
             self.sender_file, self.recver_file
         )
-        if self.gc_comp.output_busses[2].inbound_wires[0].value > 0:
+        if self.gc_comp.output_busses[0].inbound_wires[0].value == 1:
             self.comparison_bit = self.max_val
         else:
             self.comparison_bit = 0
@@ -141,7 +142,7 @@ class Party:
                 j = swap[1]
                 self.configCompare(i, j)
                 self.gc_comp.evaluate_dummy(self.n_time_bits)
-                if self.gc_comp.output_busses[2].inbound_wires[0].value > 0:
+                if self.gc_comp.output_busses[0].inbound_wires[0].value > 0:
                     self.comparison_bit = self.max_val
                 else:
                     self.comparison_bit = 0
