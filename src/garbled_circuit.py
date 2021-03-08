@@ -213,6 +213,7 @@ class GarbledCircuit(Gate):
                 wire.value = None
 
     # _source_group/_dest_group are used if the source or destination is a circuit to route wire properly.
+    # it is the index of the wire that we desire the value for, on input side or output side.
     def insertWire(self, _value=None, _source=None, _destination=None, _source_group=None, _dest_group=None):
         assert((_source in self.gates) and (_destination in self.gates))
         if isinstance(_source, GarbledCircuit):

@@ -11,28 +11,16 @@ import time
 # TODO - transfer tests to a different file
 def equality_test_battery():
     print("Equality test battery...")
-    gc_eq = [
-        gmw.equalityCirc(1), 
-        gmw.equalityCirc(2),
-        gmw.equalityCirc(3),
-        gmw.equalityCirc(4),
-        gmw.equalityCirc(5),
-        gmw.equalityCirc(6),
-        gmw.equalityCirc(7),
-        gmw.equalityCirc(8)
-    ]
+    gc_eq = [gmw.equalityCirc(n) for n in range(1, 9, 1)]
     # (n_time_bits, n_symbol_bits, input)
     tests = []
     # T/F for each test case
     expected_output = []
-    for bits in range(1, 8, 1):
-        mask1 = utils.bitmask(0, bits-1)
-        mask2 = utils.bitmask(bits, 2*bits-1)
-        for i in range(4**bits):
-            time_1 = i & mask1
-            time_2 = (i & mask2) >> bits
-            tests.append((bits, 1, [(time_1 << 1) | 1, (time_2 << 1) | 1]))
-            expected_output.append(time_1 == time_2)
+    for bits in range(1, 9, 1):
+        for time_1 in range(2**bits):
+            for time_2 in range(2**bits):
+                tests.append((bits, 1, [(time_1 << 1) | 1, (time_2 << 1) | 1]))
+                expected_output.append(time_1 == time_2)
 
     outcomes = []
     for test in tests:
@@ -47,6 +35,35 @@ def equality_test_battery():
             failure = True
     if not failure:
         print("Test cases passed!")
+
+def comparison_test_battery():
+    print("Greater-than test battery...")
+    gc_gt = [gmw.greaterThanCirc(n) for n in range(1, 9, 1)]
+    # (n_time_bits, n_symbol_bits, input)
+    tests = []
+    # T/F for each test case
+    expected_output = []
+    for bits in range(1, 9, 1):
+        for time_1 in range(2**bits):
+            for time_2 in range(2**bits):
+                tests.append((bits, 1, [(time_1 << 1) | 1, (time_2 << 1) | 1]))
+                expected_output.append(time_1 > time_2)
+
+    outcomes = []
+    for test in tests:
+        p = Party(test[0], test[1], test[2], '')
+        p.setGC(gc_gt[test[0]-1], None, None)
+        outcomes.append(p.executeComparisonDummy())
+    failure = False
+    for i in range(0, len(expected_output)):
+        if outcomes[i] != expected_output[i]:
+            print("TEST", i, "FAILED: ")
+            print("Expected", expected_output[i], " - Got", outcomes[i])
+            failure = True
+    if not failure:
+        print("Test cases passed!")
+
+
 
 # TODO - organize the bulk of the following code into functions to make the main more readable
 
@@ -103,7 +120,8 @@ if mode != 'T':
 # evaluate circuits concurrently.
 if __name__ == '__main__':
     if mode == 'T':
-        equality_test_battery()
+        # equality_test_battery()
+        comparison_test_battery()
     elif mode == 'D':
         start = time.time()
         alice.executeSortDummy()

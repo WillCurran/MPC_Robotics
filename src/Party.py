@@ -41,20 +41,23 @@ class Party:
         # for k in range(2*self.n_time_bits):
         #     print(self.gc_eq.input_busses[k].outbound_wires[0].value)
 
-    # def executeEquality(self, connections, q, ipc_lock):
-    #     self.configEquality(0, 1)
-    #     self.gc_eq.evaluate(connections, ipc_lock, self.id, 1)
-    #     ipc_lock[0].acquire()
-    #     print(self.id, self.gc_eq.output_busses[0].inbound_wires[0].value)
-    #     ipc_lock[0].release()
-
     # i and j are indices of array we wish to compare
     # set wires to time values (extract time bits)
     def configCompare(self, i, j):
-        for wire in self.gc_comp.input_busses[0].outbound_wires:
-            wire.value = (self.my_shares[i] & self.time_bitmask) >> self.n_symbol_bits
-        for wire in self.gc_comp.input_busses[1].outbound_wires:
-            wire.value = (self.my_shares[j] & self.time_bitmask) >> self.n_symbol_bits
+        # OLD for 1-bit times
+        # for wire in self.gc_comp.input_busses[0].outbound_wires:
+        #     wire.value = (self.my_shares[i] & self.time_bitmask) >> self.n_symbol_bits
+        # for wire in self.gc_comp.input_busses[1].outbound_wires:
+        #     wire.value = (self.my_shares[j] & self.time_bitmask) >> self.n_symbol_bits
+        for k in range(0, 2*self.n_time_bits, 2):
+            bit = self.n_symbol_bits + self.n_time_bits - k//2 - 1
+            for wire in self.gc_comp.input_busses[k].outbound_wires:
+                wire.value = (self.my_shares[i] >> bit) & 1
+            for wire in self.gc_comp.input_busses[k+1].outbound_wires:
+                wire.value = (self.my_shares[j] >> bit) & 1
+        # print("vals are:")
+        # for k in range(2*self.n_time_bits):
+        #     print(self.gc_comp.input_busses[k].outbound_wires[0].value)
 
     # i and j are indices of array we wish to swap
     # First two wires get full payload.
@@ -154,7 +157,12 @@ class Party:
         # 1 bit wires on a tournament-wise evaluation!
         self.gc_eq.evaluate_dummy(1)
         return bool(self.gc_eq.output_busses[0].inbound_wires[0].value)
-                
+    
+    def executeComparisonDummy(self):
+        self.configCompare(0, 1)
+        # 1 bit wires on a tournament-wise evaluation!
+        self.gc_comp.evaluate_dummy(1)
+        return bool(self.gc_comp.output_busses[0].inbound_wires[0].value)
 
     # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
     # def equality(self, connections, ipc_lock, a, b, n_bits)
