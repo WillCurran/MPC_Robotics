@@ -105,18 +105,53 @@ def equalityCirc(n_bits):
     gc.insertGate(GateType.CIRCUIT, gc2)
     and_1 = gc.insertGate(GateType.AND)
     OUTPUT_BUS_A = gc.insertGate(GateType.OUTPUT_BUS)
-    # connect most significant bits of each number first
-    for i in range(0, 2*n1, 2):
-        gc.insertWire(_source=gc.input_busses[i//2], _destination=gc1, _dest_group=i)
-        gc.insertWire(_source=gc.input_busses[n_bits + i//2], _destination=gc1, _dest_group=i+1)
-    # then least significant bits
-    for i in range(0, 2*n2, 2):
-        gc.insertWire(_source=gc.input_busses[n1 + i//2], _destination=gc2, _dest_group=i)
-        gc.insertWire(_source=gc.input_busses[n_bits + n1 + i//2], _destination=gc2, _dest_group=i+1)
+    # connect straight across
+    for i in range(0, 2*n1):
+        gc.insertWire(_source=gc.input_busses[i], _destination=gc1, _dest_group=i)
+    for i in range(0, 2*n2):
+        gc.insertWire(_source=gc.input_busses[2*n1 + i], _destination=gc2, _dest_group=i)
 
     # merge
     gc.insertWire(_source=gc1, _destination=and_1, _source_group=0)
     gc.insertWire(_source=gc2, _destination=and_1, _source_group=0)
     gc.insertWire(_source=and_1, _destination=OUTPUT_BUS_A)
-    # gc.printGatesRecursive()
+    # if n_bits == 2:
+    #     gc.printGatesRecursive()
     return gc
+
+# # input 2 bits (secret-shared form): A, B. output 3 bits (secret-shared form): A < B, A == B, A > B
+# def greaterThanCirc():
+#     # A --NOT1--AND1-- ---------(A < B)
+#     #   \  ----^    v
+#     #    \/         XOR--NOT3---(A = B)
+#     #    /\         ^
+#     #   /  ----v    |
+#     # B --NOT2--AND2-- ---------(A > B)
+#     gc = GarbledCircuit(GateType.CIRCUIT)
+#     INPUT_BUS_A = gc.insertGate(GateType.INPUT_BUS)
+#     INPUT_BUS_B = gc.insertGate(GateType.INPUT_BUS)
+#     not_1 = gc.insertGate(GateType.NOT)
+#     not_2 = gc.insertGate(GateType.NOT)
+#     and_1 = gc.insertGate(GateType.AND)
+#     and_2 = gc.insertGate(GateType.AND)
+#     xor = gc.insertGate(GateType.XOR)
+#     not_3 = gc.insertGate(GateType.NOT)
+#     OUTPUT_BUS_A = gc.insertGate(GateType.OUTPUT_BUS)
+#     OUTPUT_BUS_B = gc.insertGate(GateType.OUTPUT_BUS)
+#     OUTPUT_BUS_C = gc.insertGate(GateType.OUTPUT_BUS)
+
+#     gc.insertWire(_source=INPUT_BUS_A, _destination=not_1)
+#     gc.insertWire(_source=INPUT_BUS_B, _destination=not_2)
+#     gc.insertWire(_source=INPUT_BUS_A, _destination=and_2)
+#     gc.insertWire(_source=INPUT_BUS_B, _destination=and_1)
+
+#     gc.insertWire(_source=not_1, _destination=and_1)
+#     gc.insertWire(_source=not_2, _destination=and_2)
+#     gc.insertWire(_source=and_1, _destination=xor)
+#     gc.insertWire(_source=and_2, _destination=xor)
+#     gc.insertWire(_source=xor, _destination=not_3)
+
+#     gc.insertWire(_source=and_1, _destination=OUTPUT_BUS_A)
+#     gc.insertWire(_source=not_3, _destination=OUTPUT_BUS_B)
+#     gc.insertWire(_source=and_2, _destination=OUTPUT_BUS_C)
+#     return gc

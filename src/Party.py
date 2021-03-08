@@ -33,13 +33,13 @@ class Party:
         self.recver_file = recver_file_
 
     def configEquality(self, i, j):
-        for k in range(self.n_time_bits):
-            self.gc_eq.input_busses[k].outbound_wires[0].value = (self.my_shares[i] >> (self.n_symbol_bits + self.n_time_bits-k-1)) & 1
-        for k in range(self.n_time_bits):
-            self.gc_eq.input_busses[self.n_time_bits+k].outbound_wires[0].value = (self.my_shares[j] >> (self.n_symbol_bits + self.n_time_bits-k-1)) & 1
+        for k in range(0, 2*self.n_time_bits, 2):
+            bit = self.n_symbol_bits + self.n_time_bits - k//2 - 1
+            self.gc_eq.input_busses[k].outbound_wires[0].value = (self.my_shares[i] >> bit) & 1
+            self.gc_eq.input_busses[k+1].outbound_wires[0].value = (self.my_shares[j] >> bit) & 1
         # print("vals are:")
-        # for i in range(4):
-        #     print(self.gc_eq.input_busses[i].outbound_wires[0].value)
+        # for k in range(2*self.n_time_bits):
+        #     print(self.gc_eq.input_busses[k].outbound_wires[0].value)
 
     # def executeEquality(self, connections, q, ipc_lock):
     #     self.configEquality(0, 1)
@@ -96,7 +96,7 @@ class Party:
         self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
         # print(self.id, self.my_shares[i], self.my_shares[j])
 
-    # TODO - busy waiting issue with IPC!
+    # TODO - busy waiting issue with IPC? Did this go away with precomputed OTs?
     # execute a sort with another party on my sorting network
     # assume 2 bits of each element in list (1 time || 1 symbol) - run 2 GMW instances in parallel
     def executeSort(self, connections, q, ipc_lock):
@@ -130,6 +130,31 @@ class Party:
     def executePipeline(self, connections, q, ipc_lock, k, s):
         self.executeSort(connections, q, ipc_lock)
         # self.executeMooreMachineEval(connections[0], k, s)
+
+    def executeSortDummy(self):
+        for level in self.network.swaps:
+            for swap in level:
+                i = swap[0]
+                j = swap[1]
+                self.configCompare(i, j)
+                self.gc_comp.evaluate_dummy(self.n_time_bits)
+                if self.gc_comp.output_busses[2].inbound_wires[0].value > 0:
+                    self.comparison_bit = self.max_val
+                else:
+                    self.comparison_bit = 0
+                self.configExchange(i, j)
+                self.gc_exch.evaluate_dummy(self.n_time_bits+self.n_symbol_bits)
+                self.my_shares[i] = self.gc_exch.output_busses[0].inbound_wires[0].value
+                self.my_shares[j] = self.gc_exch.output_busses[1].inbound_wires[0].value
+        output_list = [(num >> self.n_symbol_bits, num & utils.bitmask(0, self.n_symbol_bits-1)) for num in self.my_shares]
+        print(output_list)
+
+    def executeEqualityDummy(self):
+        self.configEquality(0, 1)
+        # 1 bit wires on a tournament-wise evaluation!
+        self.gc_eq.evaluate_dummy(1)
+        return bool(self.gc_eq.output_busses[0].inbound_wires[0].value)
+                
 
     # # dynamic programming solution. store answers in array that I wipe every time we're looking at 2 different numbers
     # def equality(self, connections, ipc_lock, a, b, n_bits)
