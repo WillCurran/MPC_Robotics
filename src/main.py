@@ -181,13 +181,13 @@ if __name__ == '__main__':
     elif mode == 'A':
         n_time_bits, n_symbol_bits, n_rounds, input_a, input_b = \
             parse_input_files('input_a.txt', 'input_b.txt')
-
+        
         gc_exch = gmw.exchangeCirc()
         gc_comp = gmw.greaterThanCirc(n_time_bits)
         
-        alice_input, bob_input = (input_a[0], input_b[0])
+        alice_input, bob_input = (input_a, input_b)
 
-        network = SortingNetwork('BUBBLE',len(input_a))
+        network = SortingNetwork('BUBBLE',len(input_a[0]))
 
         # both parties own the same gc, but will alter values
         alice = Party(n_time_bits, n_symbol_bits, alice_input, "A")
@@ -216,19 +216,20 @@ if __name__ == '__main__':
         p_a.join()
         p_b.join()
         end = time.time()
-        # should be 2 things in the queue
-        if(q.empty()):
-            print("ERROR QUEUE SIZE")
-            exit(1)
-        res1 = q.get()
-        if(q.empty()):
-            print("ERROR QUEUE SIZE")
-            exit(1)
-        res2 = q.get()
-        # output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-        # print("list after sort", output_list)
-        output_list = [(num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-        print("sorted symbols", output_list)
+        # should be 2*rounds things in the queue
+        for i in range(n_rounds):
+            if(q.empty()):
+                print("ERROR QUEUE SIZE")
+                exit(1)
+            res1 = q.get()
+            if(q.empty()):
+                print("ERROR QUEUE SIZE")
+                exit(1)
+            res2 = q.get()
+            # output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
+            # print("list after sort", output_list)
+            output_list = [(num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
+            print(output_list)
         print("Took", end-start, "seconds.")
         alice_sender_file.close()
         alice_recver_file.close()
