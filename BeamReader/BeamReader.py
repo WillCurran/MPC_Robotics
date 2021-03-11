@@ -2,14 +2,11 @@ import time
 import random
 import os
 import sys
+import math
 from multiprocessing import Process, Lock
 
 FILE_NAME_SHARES_A = 'shares_a'
 FILE_NAME_SHARES_B = 'shares_b'
-
-def count_bits(n):
-	return len(bin(n)[2: ])
-
 
 def flipCoin():
     return random.choice([True,False])
@@ -28,29 +25,29 @@ def read_delete_and_create_again(file_name):
 
 def print_func(lock, file_name, label_index, start, end, num_beams):
     print('Reading file : ', file_name)
-    max_bits = count_bits(num_beams)
-    max_int = '1'*max_bits
-    data = {k: int(max_int, base=2) for k in range(start,end)}
-    print(data)
+    sensor_bits = math.ceil(math.log2(num_beams+1)) # beams, plus null symbol
+    sensor_max = 2**sensor_bits-1
+    time_bits = math.ceil(math.log2(end-start))                         
+    data = {k: sensor_max for k in range(0,end-start)}
     with open(file_name, "r") as file:
         for line in file:
-            current_value = int(line)
-            if current_value < start:
+            current_value = int(line) - start
+            if current_value < 0:
                 continue
-            if current_value >= end:
+            if current_value >= end-start:
                 break
             data[current_value] = label_index
-    print(data)
-    file = open(file_name, "r")
-    file_data = file.readlines()
-    file.close()
+    f = open(file_name, "r")
+    file_data = f.readlines()
+    f.close()
     lock.acquire()
     try:
+        print(data)
         file_shares_a = open(FILE_NAME_SHARES_A, 'a')
         file_shares_b = open(FILE_NAME_SHARES_B, 'a')
         for key in data:
-            plain_number = (key << max_bits) + data[key]
-            random_number = random.randint(1,plain_number)
+            plain_number = (key << sensor_bits) + data[key]
+            random_number = random.getrandbits(sensor_bits + time_bits)
             share_a = random_number
             share_b = plain_number ^ random_number
             file_shares_a.write(str(share_a) + '\n')
