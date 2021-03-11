@@ -180,7 +180,7 @@ if __name__ == '__main__':
         bob_recver_file.close()
     elif mode == 'A':
         n_time_bits, n_symbol_bits, n_rounds, input_a, input_b = \
-            parse_input_files('input_a.txt', 'input_b.txt')
+            parse_input_files('../data/shares_a', '../data/shares_b')
         
         gc_exch = gmw.exchangeCirc()
         gc_comp = gmw.greaterThanCirc(n_time_bits)
@@ -230,7 +230,7 @@ if __name__ == '__main__':
             # output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
             # print("list after sort", output_list)
             output_list = [(num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-            print("Symbol Stream", i, ":", output_list)
+            print("Plaintext Symbol Stream", i, ":", output_list)
         print("Took", end-start, "seconds.")
         alice_sender_file.close()
         alice_recver_file.close()
