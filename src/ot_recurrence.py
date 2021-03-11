@@ -11,8 +11,8 @@ def num_and_gates_compare_recursive(n_time_bits):
     # 1 AND to compute greater-than bit
     if n_time_bits == 1:
         return 1
-    n1 = math.floor(n_bits/2.0)
-    n2 = math.ceil(n_bits/2.0)
+    n1 = math.floor(n_time_bits/2.0)
+    n2 = math.ceil(n_time_bits/2.0)
     # 2 additional AND gates per merge
     return num_ot_compare(n1) + num_ot_compare(n2) + 2
 
@@ -28,7 +28,7 @@ def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
     # compare AND gates, total
     num_and_gates_compare = 3 * n_time_bits - 2
     # compare depth
-    num_and_rounds_compare = math.ceil(math.log2(n_bits)) + 1
+    num_and_rounds_compare = math.ceil(math.log2(n_time_bits)) + 1
 
     # exchange AND gates, per (n_time_bits+n_symbol_bits)-bit word
     num_and_gates_exchange_per_word = 4
@@ -42,10 +42,10 @@ def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
     rounds += num_and_rounds_compare
     rounds += num_and_rounds_exchange
 
-    return (OTs_due_to_time_bits, OTs_due_to_symbol_bits, rounds)
+    return [OTs_due_to_time_bits, OTs_due_to_symbol_bits, rounds]
 
 def num_OTs_sort(n_swaps, n_time_bits, n_symbol_bits):
-    return n_swaps * num_OTs_compare_exchange(n_time_bits, n_symbol_bits)
+    return [n_swaps * a for a in num_OTs_compare_exchange(n_time_bits, n_symbol_bits)]
 
 
 # OTs in moore machine execution
