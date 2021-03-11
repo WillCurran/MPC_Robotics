@@ -36,9 +36,7 @@ Usage Example:
 py BeamReader.py {START TIME} {END TIME(NON-INCLUSIVE)} [LIST OF BEAM LABELS]
 py BeamReader.py 5 10 a b c
 
-#Python Packages
-Package      Version
------------- ---------
+## Python Packages: 
 crypto       1.4.1
 gmpy2        2.0.8
 libnum       1.7.1
