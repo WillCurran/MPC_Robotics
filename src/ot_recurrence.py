@@ -17,16 +17,12 @@ def num_and_gates_compare_recursive(n_time_bits):
     return num_ot_compare(n1) + num_ot_compare(n2) + 2
 
 # arithmetic version
-# TODO - why is number of and gates 3n-2, not 3n-logn-2 as GMW paper claims?
-# num_and_gates_compare = 3 * n_time_bits - 2
-# num_and_rounds_compare = math.ceil(math.log2(n_bits)) + 1
-
 def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
     OTs_due_to_time_bits = 0
     OTs_due_to_symbol_bits = 0
     rounds = 0
     # compare AND gates, total
-    num_and_gates_compare = 3 * n_time_bits - 2
+    num_and_gates_compare = 3 * n_time_bits - math.ceil(math.log2(n_time_bits)) - 2
     # compare depth
     num_and_rounds_compare = math.ceil(math.log2(n_time_bits)) + 1
 
