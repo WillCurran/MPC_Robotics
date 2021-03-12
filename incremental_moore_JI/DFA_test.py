@@ -8,6 +8,21 @@ def test():
         'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
         'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
 		}
+    together_filter = {'alphabet': [0,1,2,3], # 3 is null, null must be all 1s in bits
+        'states': 4, # or could represent as [0, 1, 2, ..., |Q|]
+        'initial': 0,
+        'terminals': [0,1,2,3] # not sure if this is necessary, all states are terminal states
+        'delta': [(1,3,2,0), (0,2,3,1), (3,1,0,2), (2,0,1,3)], # index is which state. tuple contains the delta from that state if 0 or 1
+        'outputs': ['blue','blue','blue','red'] # moore machine outputs. need to have some assumption of how many bits for garbling.
+		}
+    binary_together_filter = {'alphabet': [0,1],
+        'states': 12, #each non-binary state needs two states per number of bits needed for alphabet
+        'initial': 0,
+        'terminals': [0,1,2,3,4,5,6,7,8,9,10,11]
+        # index is which state. tuple contains the delta from that state if 0 or 1
+        'delta': [(1,2),(4,10),(7,0), (5,6),(0,7),(10,4), (8,9),(10,4),(0,7), (11,12),(7,0),(4,10)],
+        'outputs': [0,0,0,0,0,0,0,0,0,1,1,1] # 0 is blue, 1 is red
+		}
     x_a = input("Alice's input: ")
     x_b = input("Bob's input: ")
     n = len(x_a)
