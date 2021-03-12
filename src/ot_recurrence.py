@@ -22,7 +22,7 @@ def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
     OTs_due_to_symbol_bits = 0
     rounds = 0
     # compare AND gates, total
-    num_and_gates_compare = 3 * n_time_bits - math.ceil(math.log2(n_time_bits)) - 2
+    num_and_gates_compare = 3 * n_time_bits - 2
     # compare depth
     num_and_rounds_compare = math.ceil(math.log2(n_time_bits)) + 1
 

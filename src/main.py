@@ -52,7 +52,7 @@ def comparison_test_battery():
 
     outcomes = []
     for test in tests:
-        p = Party(test[0], test[1], test[2], '')
+        p = Party(test[0], test[1], [test[2]], '')
         p.setGC(gc_gt[test[0]-1], None, None)
         outcomes.append(p.executeComparisonDummy())
     failure = False

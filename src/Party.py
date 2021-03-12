@@ -134,7 +134,7 @@ class Party:
         for swap in self.network.swaps:
             i = swap[0]
             j = swap[1]
-            self.configCompare(i, j)
+            self.configCompare(i, j, 0)
             self.gc_comp.evaluate_dummy(self.n_time_bits)
             if self.gc_comp.output_busses[0].inbound_wires[0].value > 0:
                 self.comparison_bit = self.max_val
@@ -148,13 +148,13 @@ class Party:
         print(output_list)
 
     def executeEqualityDummy(self):
-        self.configEquality(0, 1)
+        self.configEquality(0, 1, 0)
         # 1 bit wires on a tournament-wise evaluation!
         self.gc_eq.evaluate_dummy(1)
         return bool(self.gc_eq.output_busses[0].inbound_wires[0].value)
     
     def executeComparisonDummy(self):
-        self.configCompare(0, 1)
+        self.configCompare(0, 1, 0)
         # 1 bit wires on a tournament-wise evaluation!
         self.gc_comp.evaluate_dummy(1)
         return bool(self.gc_comp.output_busses[0].inbound_wires[0].value)
