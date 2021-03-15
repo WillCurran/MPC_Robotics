@@ -8,6 +8,7 @@ from sorting_network import *
 from Party import *
 import time
 import math
+import ot_recurrence
 
 # TODO - transfer tests to a different file
 def equality_test_battery():
@@ -236,3 +237,15 @@ if __name__ == '__main__':
         alice_recver_file.close()
         bob_sender_file.close()
         bob_recver_file.close()
+
+        [OTs_due_to_time_bits_sort, OTs_due_to_symbol_bits_sort, OT_rounds_sort] = \
+            [a * n_rounds for a in ot_recurrence.num_OTs_sort(len(network.swaps), n_time_bits, n_symbol_bits)]
+        ots_due_to_symbol_bits_moore = \
+            n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3) # n sensors needed
+
+        output_file = open('testing_output.txt', 'a')
+        output_file.write(str(n_rounds) + " " + str(n_time_bits) + " " + \
+            str(end-start) + " " + str(OTs_due_to_time_bits_sort) + " " + \
+            str(OTs_due_to_symbol_bits_sort) + " " + str(OT_rounds_sort) + " " + \
+            str(ots_due_to_symbol_bits_moore) + "\n")
+        output_file.close()
