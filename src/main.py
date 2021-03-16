@@ -242,7 +242,7 @@ if __name__ == '__main__':
             [a * n_rounds for a in ot_recurrence.num_OTs_sort(len(network.swaps), n_time_bits, n_symbol_bits)]
         ots_due_to_symbol_bits_moore = \
             n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3) # n sensors needed
-
+        print("len of network =", len(network.swaps))
         output_file = open('testing_output.txt', 'a')
         output_file.write(str(n_rounds) + " " + str(n_time_bits) + " " + \
             str(end-start) + " " + str(OTs_due_to_time_bits_sort) + " " + \
