@@ -9,6 +9,7 @@ from Party import *
 import time
 import math
 import ot_recurrence
+import sys
 
 # TODO - transfer tests to a different file
 def equality_test_battery():
@@ -65,26 +66,31 @@ def comparison_test_battery():
     if not failure:
         print("Test cases passed!")
 
-def parse_input_files(filename_1, filename_2):
+def parse_input_files(filename_1, filename_2, n_rounds, n_time_bits, n_sensors):
     input_a = []
     input_b = []
-    f = open(filename_1, 'r')
-    [max_time, n_sensors, n_rounds] = [int(a) for a in f.readline().split()]
-    n_time_bits = math.ceil(math.log2(max_time))
-    n_symbol_bits = math.ceil(math.log2(n_sensors+1))
-    for j in range(n_rounds):
-        input_a.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
-        f.readline()
-    f.close()
-    f = open(filename_2, 'r')
-    f.readline()
-    for j in range(n_rounds):
-        input_b.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
-        f.readline()
-    f.close()
-    return (n_time_bits, n_symbol_bits, n_rounds, input_a, input_b)
+    with open(filename_1, 'r') as f:
+        for j in range(n_rounds):
+            input_a.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
+    with open(filename_2, 'r') as f:
+        for j in range(n_rounds):
+            input_b.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
+    return (input_a, input_b)
 
 # TODO - organize the bulk of the following code into functions to make the main more readable
+
+# USAGE: python3 main.py <Mode> [total_time] [time_window_bits] [n_sensors] [n_symbols]
+if len(sys.argv) < 2 or (len(sys.argv) > 2 and len(sys.argv) < 6):
+    print("USAGE: python3 main.py <Mode> [total_time] [time_window_bits] [n_sensors] [n_symbols]")
+    exit(1)
+mode = sys.argv[1]
+if len(sys.argv) > 2:
+    total_time = int(sys.argv[2])   
+    n_time_bits = int(sys.argv[3])
+    n_sensors = int(sys.argv[4])
+    n_symbol_bits = math.ceil(math.log2(int(sys.argv[5])+1))    # extra null symbol which we add
+    n_rounds = math.ceil((total_time+1)/(2**n_time_bits))       # [0, total_time] - evalutation starts with t=0
+    print(n_rounds, n_time_bits, n_symbol_bits)
 
 # open files of precomputed random OTs
 alice_sender_file = open('a.txt', 'r')
@@ -92,10 +98,7 @@ alice_recver_file = open('b1.txt', 'r')
 bob_sender_file = open('a1.txt', 'r')
 bob_recver_file = open('b.txt', 'r')
 
-mode = input("Auto, Manual, Dummy, or Test battery mode? (A/M/D/T) ")
 if mode == 'M':
-    n_time_bits = int(input("Number of time bits: "))
-    n_symbol_bits = int(input("Number of symbol bits: "))
     times = input("Input times (space delimited): ")
     symbols = input("Input symbols (space delimited): ")
 
@@ -180,8 +183,9 @@ if __name__ == '__main__':
         bob_sender_file.close()
         bob_recver_file.close()
     elif mode == 'A':
-        n_time_bits, n_symbol_bits, n_rounds, input_a, input_b = \
-            parse_input_files('../data/shares_a', '../data/shares_b')
+        input_a, input_b = \
+            parse_input_files('../data/shares_a_window=1', '../data/shares_b_window=1', \
+                n_rounds, n_time_bits, n_sensors)
         
         gc_exch = gmw.exchangeCirc()
         gc_comp = gmw.greaterThanCirc(n_time_bits)
