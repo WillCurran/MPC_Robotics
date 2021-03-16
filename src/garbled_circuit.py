@@ -71,7 +71,7 @@ class Gate:
                 return r << bit_i
 
     # return the gate function evaluation for this gate. Assumes 2 inputs
-    def gate_function_eval(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
+    def gate_function_eval(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file, q_OT_count):
         if self.type == GateType.NOT:
             if circuit_owner == "A":                                                # predetermined party (or requires coordination)
                 return ~self.inbound_wires[0].value & utils.bitmask(0, n_bits-1)    # keep sign, flip all other pertinent bits
@@ -82,6 +82,7 @@ class Gate:
         
         elif self.type == GateType.AND:
             val = 0
+            q_OT_count.put(n_bits)
             for i in range(n_bits):
                 val |= self.evalAndOnBitN(conn, ipc_lock, i, sender_file, recver_file)
             return val
@@ -97,7 +98,7 @@ class Gate:
         return -1                                   # gate is of type NULL
 
     # assume gates are in topological order, so inbound wires must have a value
-    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
+    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file, q_OT_count):
         if self.type == GateType.INPUT_BUS or self.type == GateType.OUTPUT_BUS:
             assert(self.canEvaluate())
             # pipe info thru - all inbound wires are of same value (is this property fully asserted at insertion?)
@@ -113,7 +114,7 @@ class Gate:
                 assert(self.inbound_wires[1].value != None) # debug
             gate_output = self.gate_function_eval(
                 conn, ipc_lock, circuit_owner, n_bits, 
-                sender_file, recver_file
+                sender_file, recver_file, q_OT_count
             )
             for outbound_wire in self.outbound_wires:
                 outbound_wire.value = gate_output
@@ -154,13 +155,13 @@ class GarbledCircuit(Gate):
     # evaluate a circuit from left to right, and return final wire values
     #   - assumes initial wire values are set and gates are in topological order
     #   - assumes only 1 gate holds all of the output wires, can easily make a dummy gate to satisfy.
-    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file):
+    def evaluate(self, conn, ipc_lock, circuit_owner, n_bits, sender_file, recver_file, q_OT_count):
         for gate in self.gates:
             # wait to execute a circuit until all components are ready.
             if gate.canEvaluate():
                 gate.evaluate(
                     conn, ipc_lock, circuit_owner, n_bits, 
-                    sender_file, recver_file
+                    sender_file, recver_file, q_OT_count
                 )
                 # wipe inbound wires if circuit needs to be reused
                 if isinstance(gate, GarbledCircuit):

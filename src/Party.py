@@ -68,12 +68,12 @@ class Party:
 
     # assumes one other party is also running this program concurrently in another process.
     # evaluate both compare and exchange gates. Update values accordingly.
-    def compareExchange(self, connections, ipc_lock, i, j, round_num):
+    def compareExchange(self, connections, ipc_lock, i, j, round_num, q_OT_count):
         self.configCompare(i, j, round_num)
         # 1 bit wires on a tournament-wise evaluation!
         self.gc_comp.evaluate(
             connections, ipc_lock, self.id, 1, 
-            self.sender_file, self.recver_file
+            self.sender_file, self.recver_file, q_OT_count
         )
         if self.gc_comp.output_busses[0].inbound_wires[0].value == 1:
             self.comparison_bit = self.max_val
@@ -84,7 +84,7 @@ class Party:
         self.configExchange(i, j, round_num)
         self.gc_exch.evaluate(
             connections, ipc_lock, self.id, self.n_time_bits+self.n_symbol_bits,
-            self.sender_file, self.recver_file
+            self.sender_file, self.recver_file, q_OT_count
         )
         self.my_shares[round_num][i] = self.gc_exch.output_busses[0].inbound_wires[0].value
         self.my_shares[round_num][j] = self.gc_exch.output_busses[1].inbound_wires[0].value
@@ -93,9 +93,9 @@ class Party:
     # TODO - busy waiting issue with IPC? Did this go away with precomputed OTs?
     # execute a sort with another party on my sorting network
     # assume 2 bits of each element in list (1 time || 1 symbol) - run 2 GMW instances in parallel
-    def executeSort(self, connections, q, ipc_lock, round_num):
+    def executeSort(self, connections, q, ipc_lock, round_num, q_OT_count):
         for swap in self.network.swaps:
-            self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num)
+            self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num, q_OT_count)
         q.put(self.my_shares[round_num])
 
     def executeMooreMachineEval(self, conn, k, s, round_num):
@@ -120,12 +120,12 @@ class Party:
             mm.runBob(conn, moore_machine, shared_input_str, n, k, s)
 
     # execute sort and then moore machine eval
-    def executePipeline(self, connections, q, ipc_lock, k, s):
+    def executePipeline(self, connections, q, ipc_lock, k, s, q_OT_count):
         # for all rounds
         for i in range(len(self.my_shares)):
             if self.id == "A":
                 print("Sort, round", i, "...")
-            self.executeSort(connections, q, ipc_lock, i)
+            self.executeSort(connections, q, ipc_lock, i, q_OT_count)
             if self.id == "A":
                 print("Moore machine, round", i, "...")
             self.executeMooreMachineEval(connections, k, s, i)

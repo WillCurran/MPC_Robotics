@@ -209,8 +209,9 @@ if __name__ == '__main__':
         ipc_lock = Lock()
         # Queue for reporting output
         q = Queue()
-        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s,))
-        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s,))
+        q_OT_count = Queue()
+        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s, q_OT_count,))
+        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s, Queue(),))
         start = time.time()
         p_a.start()
         p_b.start()
@@ -249,3 +250,10 @@ if __name__ == '__main__':
             str(OTs_due_to_symbol_bits_sort) + " " + str(OT_rounds_sort) + " " + \
             str(ots_due_to_symbol_bits_moore) + "\n")
         output_file.close()
+        print("here")
+        ots = 0
+        while(not q_OT_count.empty()):
+            ots += q_OT_count.get_nowait()
+        ots *= 3
+        print("nOTs actual (sort):", ots)
+        print("nOTs theoretical (sort):", OTs_due_to_time_bits_sort + OTs_due_to_symbol_bits_sort)
