@@ -24,7 +24,6 @@ def read_delete_and_create_again(file_name):
     file.close()
 
 def print_func(lock, file_name, label_index, start, end, num_beams):
-    print('Reading file : ', file_name)
     sensor_bits = math.ceil(math.log2(num_beams+1)) # beams, plus null symbol
     sensor_max = 2**sensor_bits-1
     time_bits = math.ceil(math.log2(end-start))                         
@@ -42,6 +41,7 @@ def print_func(lock, file_name, label_index, start, end, num_beams):
     f.close()
     lock.acquire()
     try:
+        print('Reading file : ', file_name)
         print(data)
         file_shares_a = open(FILE_NAME_SHARES_A, 'a')
         file_shares_b = open(FILE_NAME_SHARES_B, 'a')
@@ -61,21 +61,22 @@ if __name__ == "__main__":  # confirms that the code is under main function
     if os.path.exists(FILE_NAME_SHARES_B): 
         os.remove(FILE_NAME_SHARES_B)
     print('Number of arguments:' + str(len(sys.argv)))
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         sys.exit("Must pass at least one agent label with two time stamps.") 
     start = int(sys.argv[1])
     end = int(sys.argv[2])
-
-    names = sys.argv[3:]
+    time_window = 2**int(sys.argv[3])
+    names = sys.argv[4:]
     procs = []
     lock = Lock()
     # instantiating process with arguments
     names.sort()
-    for i in range(len(names)):
-        proc = Process(target=print_func, args=(lock,names[i],i,start,end,len(names)))
-        procs.append(proc)
-        proc.start()
+    for s in range(start, end, time_window):
+        for i in range(len(names)):
+            proc = Process(target=print_func, args=(lock,names[i],i,s,s+time_window,len(names)))
+            procs.append(proc)
+            proc.start()
 
-    # complete the processes
-    for proc in procs:
-        proc.join()
+        # complete the processes
+        for proc in procs:
+            proc.join()
