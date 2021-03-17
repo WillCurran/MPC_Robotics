@@ -1,0 +1,5 @@
+(Time bits) (Symbol Bits) (Total runtime) (OTs due to time bits) (OTs due to symbol bits)
+1 1 1 1 1
+2 2 2 2 2
+3 3 3 3 3
+4 4 4 4 4
