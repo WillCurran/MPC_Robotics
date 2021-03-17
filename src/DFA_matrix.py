@@ -107,17 +107,18 @@ class Alice:
 
     # used for getting the output at current state, without advancing to the next state yet.
     # we use this for revealing the output at the last row of the GM
-    def revealColor(self, GM):
+    def revealColor(self, GM, n):
         random.seed(self.pad)
         # throw away first two pads
         for i in range(2):
             random.getrandbits(self.k_prime + self.s)
         pad = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
-        output = pad ^ GM[self.row_i][self.state][2]
-        return output 
+        print("ALICE:",GM)
+        output = pad ^ GM[self.row_i % n][self.state][2]
+        return output
 
     # Client retrieves the keys and computes the final result.
-    def step3(self, key_enc, GM):
+    def step3(self, key_enc, GM, n):
         # decrypt garbled key
         k_i = otJC.alice_compute_result(int(self.input[self.row_i]), key_enc[0], key_enc[1], self.private_key)
 
@@ -128,25 +129,23 @@ class Alice:
             random.getrandbits(self.k_prime + self.s)
         )
         # navigate to the next state (first guess)
-        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i][self.state][0]
+        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i % n][self.state][0]
         if not hasNTrailingZeros(newstate_concat_newpad, self.s):
-            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i][self.state][1]
+            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i % n][self.state][1]
         # strip zeros
         (newstate_concat_newpad, _) = split_bits(newstate_concat_newpad, self.s)
         (self.state, self.pad) = split_bits(newstate_concat_newpad, self.k)
         self.row_i += 1
         # color at the resulting state
-        return self.revealColor(GM)
+        # print("ALICE STATE", self.state, "ROW_I", self.row_i)
+        return self.revealColor(GM, n)
 
     def init_state_and_pad(self, init_state_index, init_pad):
         self.state = init_state_index
         self.pad = init_pad
 
-    def __init__(self, conn, q, alice_input, n, k, s):
-        # we need an extra input (can be meaningless) to get the output at the last state
-        # this is because the garbled key for the last row must exist, even if it doesn't need to point to the correct delta.
-        self.input = alice_input + str(secrets.randbits(1))
-        self.n = n
+    def __init__(self, conn, q, alice_input, k, s):
+        self.input = alice_input
         self.q = q
         self.k = k
         self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
@@ -156,8 +155,20 @@ class Alice:
         self.row_i = 0 # which row am I in?
         (self.public_key, self.private_key) = paillier.generate_paillier_keypair()
         self.conn = conn
-        # send pk to bob
+        # self.GM = []
+        print("ALICE PK=", self.public_key)
         self.conn.send(self.public_key)
+
+    # lags 1 round behind until the end
+    def extend_input(self, alice_input, last_row):
+        self.input += alice_input
+        if last_row:
+            # we need an extra input (can be meaningless) to get the output at the last state
+            # this is because the garbled key for the last row must exist, even if it doesn't need to point to the correct delta.
+            self.input += str(secrets.randbits(1))
+    
+    # def extend_GM(self, new_rows):
+    #     self.GM.extend(new_rows)
 		
 class Bob:
     # Server mixes his inputs with client's and sends back to client in the form
@@ -269,10 +280,13 @@ class Bob:
         self.K_enc.append(garbled_keypair_enc)
         self.n += 1
 
+    def extend_input(self, bob_input, last_row):
+        self.input += bob_input
+        if last_row:
+            self.input += str(secrets.randbits(1))
 
     def __init__(self, conn, bob_input, dfa, public_key, k, s):
         self.input = bob_input
-        self.input += str(secrets.randbits(1)) # or random choice
         self.dfa = dfa
         self.public_key = public_key
         self.k = k
@@ -322,7 +336,7 @@ class Bob:
 
         self.init_state = self.PER[0][dfa['initial'] ]
         self.init_pad = self.PAD[0][self.init_state]
-
+        print("BOB SENDS INIT STATE/PAD=", self.init_state, self.init_pad)
         self.conn.send((self.init_state, self.init_pad))
 
         self.M = [self.m_row]

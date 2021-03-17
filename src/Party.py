@@ -1,7 +1,7 @@
 from garbled_circuit import *
 import secrets
 import utils
-import DFA_test as mm
+import DFA_matrix
 
 class Party:
     def __init__(self, _n_time_bits, _n_symbol_bits, _input, _id):
@@ -19,6 +19,9 @@ class Party:
         self.max_val = (1 << (self.n_symbol_bits + self.n_time_bits)) - 1
         self.sender_file = None
         self.recver_file = None
+        
+        self.moore_eval_obj = None
+        self.color_stream = [] # used if Alice
 
     def setGC(self, gc_comp, gc_exch, gc_eq):
         self.gc_comp = gc_comp
@@ -98,29 +101,72 @@ class Party:
             self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num, q_OT_count)
         q.put(self.my_shares[round_num])
 
-    def executeMooreMachineEval(self, conn, k, s, round_num):
-        moore_machine = {'alphabet': [0, 1],
-        'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
-        'initial': 0,
-        'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
-        'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
-		}
+    def init_moore(self, conn, k, s):
+        # set up moore machine
+        if self.id == "A":
+            n_states = 3
+            # Alice creates keypair and sends public key to Bob
+            self.moore_eval_obj = DFA_matrix.Alice(conn, n_states, '', k, s)
+            # wait for initial state and pad from Bob
+            (init_state, init_pad) = conn.recv()
+            print("ALICE GOT INIT STATE/PAD=", init_state, init_pad)
+            self.moore_eval_obj.init_state_and_pad(init_state, init_pad)
+        else:
+            moore_machine = {
+                'alphabet': [0, 1],
+                'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
+                'initial': 0,
+                'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
+                'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
+            }
+            alice_pk = conn.recv()
+            print("BOB GOT PK=", alice_pk)
+            # Bob creates garbled matrix, sends init state&pad
+            self.moore_eval_obj = DFA_matrix.Bob(
+                conn, '', moore_machine,
+                alice_pk, k, s
+            )
+
+    def getMooreMachineString(self, round_num):
         shared_input_str = ''
         # leading 0s in front of bits
         bit_format = '0' + str(self.n_symbol_bits) + 'b'
         for share in self.my_shares[round_num]:
             shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
-        # print('bit format', bit_format)
-        # print("symbols are", [share & utils.bitmask(0, self.n_symbol_bits) for share in self.my_shares])
-        # print(self.id, "Input is", shared_input_str)
+        return shared_input_str
+
+    def executeMooreMachineEval(self, conn, k, s, round_num, last_round):
+        shared_input_str = self.getMooreMachineString(round_num)
         n = len(shared_input_str)
-        if self.id == "A":
-            mm.runAlice(conn, moore_machine['states'], shared_input_str, n, k, s)
+        self.moore_eval_obj.extend_input(shared_input_str, last_round)
+        print("Input", shared_input_str)
+        if self.id == 'A':
+            new_GM_rows = conn.recv()
+            # self.moore_eval_obj.extend_GM(new_GM_rows)
+            if round_num == 0:
+                self.color_stream.append(self.moore_eval_obj.revealColor(new_GM_rows, 10000000))
+            for i in range(n):
+                # send encrypted choice
+                self.moore_eval_obj.encrypt_input_i()
+                # wait for garbled keys
+                strings_enc = conn.recv()
+                print("i =", i)
+                self.color_stream.append(self.moore_eval_obj.step3(strings_enc, new_GM_rows, 10000000))
         else:
-            mm.runBob(conn, moore_machine, shared_input_str, n, k, s)
+            for i in range(n):
+                self.moore_eval_obj.append_GM_row()
+            # send new rows to Alice
+            print("BOB:", self.moore_eval_obj.GM)
+            conn.send(self.moore_eval_obj.GM)
+
+            for i in range(round_num*n, (round_num+1)*n, 1):
+                # bob must now receive choices_enc
+                choices_enc = conn.recv()
+                self.moore_eval_obj.send_garbled_key(choices_enc, i)
 
     # execute sort and then moore machine eval
     def executePipeline(self, connections, q, ipc_lock, k, s, q_OT_count):
+        self.init_moore(connections, k, s)
         # for all rounds
         for i in range(len(self.my_shares)):
             if self.id == "A":
@@ -128,7 +174,7 @@ class Party:
             self.executeSort(connections, q, ipc_lock, i, q_OT_count)
             if self.id == "A":
                 print("Moore machine, round", i, "...")
-            self.executeMooreMachineEval(connections, k, s, i)
+            self.executeMooreMachineEval(connections, k, s, i, i==(len(self.my_shares)-1))
 
     def executeSortDummy(self):
         for swap in self.network.swaps:

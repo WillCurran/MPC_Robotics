@@ -254,7 +254,6 @@ if __name__ == '__main__':
             str(OTs_due_to_symbol_bits_sort) + " " + str(OT_rounds_sort) + " " + \
             str(ots_due_to_symbol_bits_moore) + "\n")
         output_file.close()
-        print("here")
         ots = 0
         while(not q_OT_count.empty()):
             ots += q_OT_count.get_nowait()

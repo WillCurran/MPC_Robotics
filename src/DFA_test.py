@@ -80,6 +80,7 @@ def runAlice(conn, q, alice_input, n, k, s):
         strings_enc = conn.recv()
         color_stream.append(alice.step3(strings_enc, GM))
     print("Color stream:", color_stream)
+    return color_stream
 
 # conn is a bidirectional Pipe() open with Bob
 # Alice's input in string form
