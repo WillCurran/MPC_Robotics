@@ -1,2 +1,13 @@
 #!/bin/bash
-for i in {1..10}; do python3 'main.py' < 'user_input.txt'; done
+
+#<Mode> [total_time] [time_window_bits] [n_sensors] [n_symbols]
+file=main.py
+mode=A
+total_time=127
+n_sensors=3
+n_symbols=3
+for w in {2..7}; do 
+    for i in {1..1}; do 
+        python3 $file $mode $total_time $w $n_sensors $n_symbols; 
+    done
+done

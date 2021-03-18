@@ -99,7 +99,6 @@ class Party:
     def executeSort(self, connections, q, ipc_lock, round_num, q_OT_count):
         for swap in self.network.swaps:
             self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num, q_OT_count)
-        q.put(self.my_shares[round_num])
 
     def init_moore(self, conn, k, s):
         # set up moore machine
@@ -109,7 +108,7 @@ class Party:
             self.moore_eval_obj = DFA_matrix.Alice(conn, n_states, '', k, s)
             # wait for initial state and pad from Bob
             (init_state, init_pad) = conn.recv()
-            print("ALICE GOT INIT STATE/PAD=", init_state, init_pad)
+            # print("ALICE GOT INIT STATE/PAD=", init_state, init_pad)
             self.moore_eval_obj.init_state_and_pad(init_state, init_pad)
         else:
             moore_machine = {
@@ -120,7 +119,7 @@ class Party:
                 'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
             }
             alice_pk = conn.recv()
-            print("BOB GOT PK=", alice_pk)
+            # print("BOB GOT PK=", alice_pk)
             # Bob creates garbled matrix, sends init state&pad
             self.moore_eval_obj = DFA_matrix.Bob(
                 conn, '', moore_machine,
@@ -139,25 +138,25 @@ class Party:
         shared_input_str = self.getMooreMachineString(round_num)
         n = len(shared_input_str)
         self.moore_eval_obj.extend_input(shared_input_str, last_round)
-        print("Input", shared_input_str)
+        # print("Input", shared_input_str)
         if self.id == 'A':
             new_GM_rows = conn.recv()
             # self.moore_eval_obj.extend_GM(new_GM_rows)
             if round_num == 0:
-                self.color_stream.append(self.moore_eval_obj.revealColor(new_GM_rows, 10000000))
+                self.color_stream.append(self.moore_eval_obj.revealColor(new_GM_rows, n))
             for i in range(n):
                 # send encrypted choice
                 self.moore_eval_obj.encrypt_input_i()
                 # wait for garbled keys
                 strings_enc = conn.recv()
-                print("i =", i)
-                self.color_stream.append(self.moore_eval_obj.step3(strings_enc, new_GM_rows, 10000000))
+                # print("i =", i)
+                self.color_stream.append(self.moore_eval_obj.step3(strings_enc, new_GM_rows, n))
         else:
             for i in range(n):
                 self.moore_eval_obj.append_GM_row()
             # send new rows to Alice
-            print("BOB:", self.moore_eval_obj.GM)
-            conn.send(self.moore_eval_obj.GM)
+            # print("BOB:", len(self.moore_eval_obj.GM[-n-1:]))
+            conn.send(self.moore_eval_obj.GM[-n-1:])
 
             for i in range(round_num*n, (round_num+1)*n, 1):
                 # bob must now receive choices_enc
@@ -175,6 +174,8 @@ class Party:
             if self.id == "A":
                 print("Moore machine, round", i, "...")
             self.executeMooreMachineEval(connections, k, s, i, i==(len(self.my_shares)-1))
+        if self.id == "A":
+            q.put(self.color_stream)
 
     def executeSortDummy(self):
         for swap in self.network.swaps:

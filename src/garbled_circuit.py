@@ -82,7 +82,7 @@ class Gate:
         
         elif self.type == GateType.AND:
             val = 0
-            q_OT_count.put(n_bits)
+            # q_OT_count.put(n_bits)
             for i in range(n_bits):
                 val |= self.evalAndOnBitN(conn, ipc_lock, i, sender_file, recver_file)
             return val

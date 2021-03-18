@@ -113,7 +113,7 @@ class Alice:
         for i in range(2):
             random.getrandbits(self.k_prime + self.s)
         pad = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
-        print("ALICE:",GM)
+        # print("ALICE:",len(GM))
         output = pad ^ GM[self.row_i % n][self.state][2]
         return output
 
@@ -156,7 +156,7 @@ class Alice:
         (self.public_key, self.private_key) = paillier.generate_paillier_keypair()
         self.conn = conn
         # self.GM = []
-        print("ALICE PK=", self.public_key)
+        # print("ALICE PK=", self.public_key)
         self.conn.send(self.public_key)
 
     # lags 1 round behind until the end
@@ -336,7 +336,7 @@ class Bob:
 
         self.init_state = self.PER[0][dfa['initial'] ]
         self.init_pad = self.PAD[0][self.init_state]
-        print("BOB SENDS INIT STATE/PAD=", self.init_state, self.init_pad)
+        # print("BOB SENDS INIT STATE/PAD=", self.init_state, self.init_pad)
         self.conn.send((self.init_state, self.init_pad))
 
         self.M = [self.m_row]

@@ -183,9 +183,9 @@ if __name__ == '__main__':
         bob_sender_file.close()
         bob_recver_file.close()
     elif mode == 'A':
-        input_a, input_b = \
-            parse_input_files('../data/shares_a_window=1', '../data/shares_b_window=1', \
-                n_rounds, n_time_bits, n_sensors)
+        infile_a = '../data/shares_a_window='+str(n_time_bits)
+        infile_b = '../data/shares_b_window='+str(n_time_bits)
+        input_a, input_b = parse_input_files(infile_a, infile_b, n_rounds, n_time_bits, n_sensors)
         
         gc_exch = gmw.exchangeCirc()
         gc_comp = gmw.greaterThanCirc(n_time_bits)
@@ -213,30 +213,25 @@ if __name__ == '__main__':
         ipc_lock = Lock()
         # Queue for reporting output
         q = Queue()
-        q_OT_count = Queue()
-        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s, q_OT_count,))
-        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s, Queue(),))
+        # q_OT_count = Queue()
+        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s, None,))
+        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s, None,))
         start = time.time()
         p_a.start()
         p_b.start()
         p_a.join()
         p_b.join()
         end = time.time()
-        # should be 2*rounds things in the queue
-        for i in range(n_rounds):
-            if(q.empty()):
+        # should be 1 thing in the queue: color stream
+        if q.empty():
                 print("ERROR QUEUE SIZE")
                 exit(1)
-            res1 = q.get()
-            if(q.empty()):
-                print("ERROR QUEUE SIZE")
-                exit(1)
-            res2 = q.get()
-            # with times for debug:
-            # output_list = [(num >> n_symbol_bits, num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-            # print("list after sort", output_list)
-            output_list = [(num & utils.bitmask(0, n_symbol_bits-1)) for num in utils.mergeLists(res1, res2)]
-            print("Plaintext Symbol Stream", i, ":", output_list)
+        res = q.get()
+        s = ''
+        for col in res:
+            s += str(col)
+        print("Color Stream")
+        print(s)
         print("Took", end-start, "seconds.")
         alice_sender_file.close()
         alice_recver_file.close()
@@ -254,9 +249,10 @@ if __name__ == '__main__':
             str(OTs_due_to_symbol_bits_sort) + " " + str(OT_rounds_sort) + " " + \
             str(ots_due_to_symbol_bits_moore) + "\n")
         output_file.close()
-        ots = 0
-        while(not q_OT_count.empty()):
-            ots += q_OT_count.get_nowait()
-        ots *= 3
-        print("nOTs actual (sort):", ots)
+        # Can enable actual OT counts to verify by uncommenting a line in gate eval and passing a real queue
+        # ots = 0
+        # while(not q_OT_count.empty()):
+        #     ots += q_OT_count.get_nowait()
+        # ots *= 3
+        # print("nOTs actual (sort):", ots)
         print("nOTs theoretical (sort):", OTs_due_to_time_bits_sort + OTs_due_to_symbol_bits_sort)
