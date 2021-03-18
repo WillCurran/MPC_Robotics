@@ -12,7 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-labels = ['Time Bits', 'Symbol Bits', 'Total Runtime', 'Time Bits OTs', 'Symbol Bits OTs']
+labels = ['Time Bits', 'Symbol Bits', 'Runtime', 'Time OTs', 'Symbol OTs']
 data=[]
 with open('times.txt', 'r') as fp:
     line = fp.readline() #skip first line
@@ -36,12 +36,16 @@ for i in range(len(data)):
     rects.append(y)
 
 # Add some text for labels, title and custom x-axis tick labels, etc.
-ax.set_ylabel('Scores')
-ax.set_title('Scores by group and gender')
+ax.set_ylabel(' ')
+ax.set_title('Oblivious Transfer Statistics')
 ax.set_xticks(x + (width*(len(data)-1)/2))
 ax.set_xticklabels(labels)
-ax.legend()
 
+plt.rcParams['font.size'] = '9'
+
+for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+	label.set_fontsize(7)
+ax.legend()
 
 def autolabel(rects):
     """Attach a text label above each bar in *rects*, displaying its height."""
@@ -56,6 +60,7 @@ for rect in rects:
     autolabel(rect)
 
 fig.tight_layout()
+fig.set_size_inches(w=3.5, h=4)
 plt.show()
 
 #############################################################################
@@ -67,7 +72,7 @@ plt.show()
 #
 # The use of the following functions, methods and classes is shown
 # in this example:
-
+matplotlib.use("pgf")
 matplotlib.axes.Axes.bar
 matplotlib.pyplot.bar
 matplotlib.axes.Axes.annotate
