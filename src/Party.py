@@ -114,7 +114,7 @@ class Party:
             moore_machine = {
                 'alphabet': [0, 1],
                 'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
-                'initial': 0,
+                'initial': 2,
                 'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
                 'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
             }
@@ -151,12 +151,13 @@ class Party:
                 strings_enc = conn.recv()
                 # print("i =", i)
                 self.color_stream.append(self.moore_eval_obj.step3(strings_enc, new_GM_rows, n))
+            self.moore_eval_obj.resetRowI()
         else:
             for i in range(n):
                 self.moore_eval_obj.append_GM_row()
             # send new rows to Alice
-            # print("BOB:", len(self.moore_eval_obj.GM[-n-1:]))
-            conn.send(self.moore_eval_obj.GM[-n-1:])
+            print("BOB sending rows:", len(self.moore_eval_obj.GM[(round_num*n):((round_num+1)*n+1)]))
+            conn.send(self.moore_eval_obj.GM[(round_num*n):((round_num+1)*n+1)])
 
             for i in range(round_num*n, (round_num+1)*n, 1):
                 # bob must now receive choices_enc

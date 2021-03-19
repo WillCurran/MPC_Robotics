@@ -114,8 +114,15 @@ class Alice:
             random.getrandbits(self.k_prime + self.s)
         pad = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
         # print("ALICE:",len(GM))
-        output = pad ^ GM[self.row_i % n][self.state][2]
+        output = pad ^ GM[self.row_i][self.state][2]
+        # if output != 2:
+        #     print("Wrong color:", output)
+        #     exit(1)
+        # print("color", output)
         return output
+
+    def resetRowI(self):
+        self.row_i = 0
 
     # Client retrieves the keys and computes the final result.
     def step3(self, key_enc, GM, n):
@@ -129,9 +136,11 @@ class Alice:
             random.getrandbits(self.k_prime + self.s)
         )
         # navigate to the next state (first guess)
-        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i % n][self.state][0]
+        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i][self.state][0]
         if not hasNTrailingZeros(newstate_concat_newpad, self.s):
-            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i % n][self.state][1]
+            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i][self.state][1]
+            if not hasNTrailingZeros(newstate_concat_newpad, self.s):
+                print("BAD Garbled Key or Pad! Neither element could be decrypted.")
         # strip zeros
         (newstate_concat_newpad, _) = split_bits(newstate_concat_newpad, self.s)
         (self.state, self.pad) = split_bits(newstate_concat_newpad, self.k)
