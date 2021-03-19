@@ -14,7 +14,7 @@ def mergeLists(a, b):
 # return an int {00..0 || 1^(j-i) || 00...0}, which has 1 values for bits in range [i,j]
 # can perform logical and (&) with a number to get only those bits
 def bitmask(i, j):
-    assert(j+1 > i)
+    assert(j >= i)
     return ((1 << (j+1 - i)) - 1) << i
 
 def equality(a, b, n):
