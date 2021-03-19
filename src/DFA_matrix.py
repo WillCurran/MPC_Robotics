@@ -1,7 +1,6 @@
 import random
-from phe import paillier
 import math
-import otJC
+import otJC_precomputed as otJC
 import secrets
 
 MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbled matrix element size
@@ -81,15 +80,6 @@ def numConcat(num1, num2, n_digits):
      num1 += num2 
      return num1
 
-
-# for now, skip this step since we are doing OT in one thread on one machine
-def step1(X, n, k):
-    (public_key, private_key) = paillier.generate_paillier_keypair() # G_OT
-    q = [0] * n
-    # for i in range (0,n):
-        #q[i] = Q_ot(public_Key, 1, 1, X[i]) # generate queries Q_OT
-    return (public_key, private_key, q)
-
 def split_bits(n1_concat_n2, bits_n2):
     n1 = n1_concat_n2 >> bits_n2
     n2 = n1_concat_n2 ^ (n1 << bits_n2)
@@ -103,7 +93,13 @@ class Alice:
     # Client encrypts her input at her current row_i and sends it to server in the form
     # (c_enc_a, c_prime_enc_a)
     def encrypt_input_i(self):
-        self.conn.send(otJC.alice_send_choices_enc(int(self.input[self.row_i]), self.public_key))
+        self.r_d = otJC.alice_send_choices_enc(
+            self.conn, 
+            int(self.input[self.row_i]), 
+            self.k_prime,
+            self.s,
+            self.ot_receiver_open_file
+        )
 
     # used for getting the output at current state, without advancing to the next state yet.
     # we use this for revealing the output at the last row of the GM
@@ -125,9 +121,15 @@ class Alice:
         self.row_i = 0
 
     # Client retrieves the keys and computes the final result.
-    def step3(self, key_enc, GM, n):
+    def step3(self, GM, n):
         # decrypt garbled key
-        k_i = otJC.alice_compute_result(int(self.input[self.row_i]), key_enc[0], key_enc[1], self.private_key)
+        k_i = otJC.alice_compute_result(
+            self.conn,
+            int(self.input[self.row_i]), 
+            self.r_d, 
+            self.k_prime,
+            self.s
+        )
 
         # get the corresponding random nums
         random.seed(self.pad)
@@ -153,7 +155,7 @@ class Alice:
         self.state = init_state_index
         self.pad = init_pad
 
-    def __init__(self, conn, q, alice_input, k, s):
+    def __init__(self, conn, q, alice_input, k, s, ot_receiver_open_file):
         self.input = alice_input
         self.q = q
         self.k = k
@@ -162,11 +164,9 @@ class Alice:
         self.state = None
         self.pad = None
         self.row_i = 0 # which row am I in?
-        (self.public_key, self.private_key) = paillier.generate_paillier_keypair()
         self.conn = conn
-        # self.GM = []
-        # print("ALICE PK=", self.public_key)
-        self.conn.send(self.public_key)
+        self.ot_receiver_open_file = ot_receiver_open_file
+        self.r_d = None
 
     # lags 1 round behind until the end
     def extend_input(self, alice_input, last_row):
@@ -182,17 +182,17 @@ class Alice:
 class Bob:
     # Server mixes his inputs with client's and sends back to client in the form
     # (d_0_enc, d_1_enc). Alice tells us which row of the matrix she is currently looking at.
-    def send_garbled_key(self, alice_choices, alice_i):
-        self.conn.send(
-            otJC.bob_send_strings_enc(
+    def send_garbled_key(self, alice_i):
+        strs = otJC.bob_send_strings_enc(
+            self.conn,
             int(self.input[alice_i]), 
-            self.K_enc[alice_i], 
-            alice_choices[0], 
-            alice_choices[1], 
-            self.public_key, 
-            self.k
-            )
+            self.K_enc[alice_i],
+            self.k_prime,
+            self.s,
+            self.ot_sender_open_file
         )
+        # if alice_i == 12:
+        #     print(strs)
 
     # Server Computes a Garbled DFA Matrix GM
     def step2(self, dfa, n, k):
@@ -279,14 +279,13 @@ class Bob:
             b = new_gm_row[j][1] ^ pad[1]
             c = new_gm_row[j][2] ^ pad[2]
             new_gm_row[j] = (a,b,c)
-        garbled_keypair_enc = garbled_keypair # TODO - encrypt with OT public key and transfer via OT
 
         self.M.append(self.m_row)
         self.PER.append(next_per_row)
         self.PAD.append(next_pad_row)
         self.PM.append(new_pm_row)
         self.GM.append(new_gm_row)
-        self.K_enc.append(garbled_keypair_enc)
+        self.K_enc.append(garbled_keypair)
         self.n += 1
 
     def extend_input(self, bob_input, last_row):
@@ -294,14 +293,14 @@ class Bob:
         if last_row:
             self.input += str(secrets.randbits(1))
 
-    def __init__(self, conn, bob_input, dfa, public_key, k, s):
+    def __init__(self, conn, bob_input, dfa, k, s, ot_sender_open_file):
         self.input = bob_input
         self.dfa = dfa
-        self.public_key = public_key
         self.k = k
         self.s = s
         self.n = 0
         self.conn = conn
+        self.ot_sender_open_file = ot_sender_open_file
 
         # start with 1 row of M, 1 row of PM, 1 row GM, 2 rows PER, 2 rows PAD, 1 garbled keypair
         self.q = dfa['states']

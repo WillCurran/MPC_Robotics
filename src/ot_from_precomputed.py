@@ -57,6 +57,7 @@ def recv_choice_send_correction_big(conn, s0, s1, k, _s, ot_sender_open_file):
         masked_s1 = (masked_s1 << 1) | (((s1 & utils.bitmask(l-i-1,l-i-1)) >> (l-i-1)) ^ r[1-e_bit])
     # print("masked_s0", bin(masked_s0), "masked_s1", bin(masked_s1))
     conn.send(("x", (masked_s0, masked_s1)))
+    return (masked_s0, masked_s1)
     
 # Receiver receives masked bits and decrypts his choice
 def recv_correction_decrypt_big(conn, choice, r_d_concat, k, s):

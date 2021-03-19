@@ -12,10 +12,10 @@ def alice_send_choices_enc(conn, choice_a, k, s, ot_receiver_open_file):
 def bob_send_strings_enc(conn, choice_b, strings_b, k, s, ot_sender_open_file):
     if choice_b:
         # ot.recv_choice_send_correction(conn, strings_b[1], strings_b[0], ot_sender_open_file)
-        ot.recv_choice_send_correction_big(conn, strings_b[1], strings_b[0], k, s, ot_sender_open_file)
+        return ot.recv_choice_send_correction_big(conn, strings_b[1], strings_b[0], k, s, ot_sender_open_file)
     else:
         # ot.recv_choice_send_correction(conn, strings_b[0], strings_b[1], ot_sender_open_file)
-        ot.recv_choice_send_correction_big(conn, strings_b[0], strings_b[1], k, s, ot_sender_open_file)
+        return ot.recv_choice_send_correction_big(conn, strings_b[0], strings_b[1], k, s, ot_sender_open_file)
         
 # alice decrypts string
 def alice_compute_result(conn, choice_a, r_d, k, s):
@@ -45,13 +45,13 @@ def example_execution_OT_with_JC(choice_a, choice_b, strings_b, fd_a, fd_b, k, s
     alice_plaintext_result = alice_compute_result(a, choice_a, r_d, k, s)
     print("Alice's result: " + str(alice_plaintext_result))
 
-fd_alice = open('b.txt')
-fd_bob = open('a.txt')
-choice_a = 0
-choice_b = 0
-strings = [5, 12]
-k = 3
-s = 1
-example_execution_OT_with_JC(choice_a, choice_b, strings, fd_alice, fd_bob, k, s)
-fd_alice.close()
-fd_bob.close()
+# fd_alice = open('b.txt')
+# fd_bob = open('a.txt')
+# choice_a = 1
+# choice_b = 1
+# strings = [10000000, 1]
+# k = 1
+# s = 1034
+# example_execution_OT_with_JC(choice_a, choice_b, strings, fd_alice, fd_bob, k, s)
+# fd_alice.close()
+# fd_bob.close()

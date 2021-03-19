@@ -207,7 +207,7 @@ if __name__ == '__main__':
         bob.setOTFiles(bob_sender_file, bob_recver_file)
 
         k = 8 # security parameter
-        s = 16 # statistical security parameter
+        s = 64 # statistical security parameter
         
         connections = Pipe()
         ipc_lock = Lock()
