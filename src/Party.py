@@ -2,6 +2,7 @@ from garbled_circuit import *
 import secrets
 import utils
 import DFA_matrix
+from pprint import pprint
 
 class Party:
     def __init__(self, _n_time_bits, _n_symbol_bits, _input, _id):
@@ -103,23 +104,30 @@ class Party:
     def init_moore(self, conn, k, s):
         # set up moore machine
         if self.id == "A":
-            n_states = 3
+            n_states = 12
             self.moore_eval_obj = DFA_matrix.Alice(conn, n_states, '', k, s, self.recver_file)
             # wait for initial state and pad from Bob
             (init_state, init_pad) = conn.recv()
             self.moore_eval_obj.init_state_and_pad(init_state, init_pad)
         else:
-            moore_machine = {
-                'alphabet': [0, 1],
-                'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
-                'initial': 2,
-                'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
-                'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
+            # moore_machine = {
+            #     'alphabet': [0, 1],
+            #     'states': 3, # or could represent as [0, 1, 2, ..., |Q|]
+            #     'initial': 2,
+            #     'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
+            #     'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
+            # }
+            minimal_binary_together_filter = {'alphabet': [0,1],
+            'states': 12, #each non-binary state needs two states per number of bits needed for alphabet
+            'initial': 0,
+            # index is which state. tuple contains the delta from that state if 0 or 1
+            'delta': [(1,2),(3,9),(6,0), (4,5),(0,6),(9,3), (7,8),(9,3),(0,6), (10,11),(6,0),(3,9)],
+            'outputs': [0,2,2,0,2,2,0,2,2,1,2,2] # 0 is blue, 1 is red, 2 is bogus
             }
             # print("BOB GOT PK=", alice_pk)
             # Bob creates garbled matrix, sends init state&pad
             self.moore_eval_obj = DFA_matrix.Bob(
-                conn, '', moore_machine,
+                conn, '', minimal_binary_together_filter,
                 k, s, self.sender_file
             )
 
@@ -153,7 +161,6 @@ class Party:
             for i in range(n):
                 self.moore_eval_obj.append_GM_row()
             # send new rows to Alice
-            print("BOB sending rows:", len(self.moore_eval_obj.GM[(round_num*n):((round_num+1)*n+1)]))
             conn.send(self.moore_eval_obj.GM[(round_num*n):((round_num+1)*n+1)])
 
             for i in range(round_num*n, (round_num+1)*n, 1):
