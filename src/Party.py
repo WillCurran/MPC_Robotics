@@ -5,7 +5,7 @@ import DFA_matrix
 from pprint import pprint
 
 class Party:
-    def __init__(self, _n_time_bits, _n_symbol_bits, _input, _id):
+    def __init__(self, _n_time_bits, _n_symbol_bits, _input, _id, n_sensors):
         self.n_time_bits = _n_time_bits
         self.n_symbol_bits = _n_symbol_bits
         self.gc_comp = None
@@ -20,6 +20,7 @@ class Party:
         self.max_val = (1 << (self.n_symbol_bits + self.n_time_bits)) - 1
         self.sender_file = None
         self.recver_file = None
+        self.n_sensors = n_sensors
         
         self.moore_eval_obj = None
         self.color_stream = [] # used if Alice
@@ -100,6 +101,7 @@ class Party:
     def executeSort(self, connections, q, ipc_lock, round_num, q_OT_count):
         for swap in self.network.swaps:
             self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num, q_OT_count)
+        # q.put([s & utils.bitmask(0, self.n_symbol_bits-1) for s in self.my_shares[round_num]])
 
     def init_moore(self, conn, k, s):
         # set up moore machine
@@ -131,16 +133,23 @@ class Party:
                 k, s, self.sender_file
             )
 
-    def getMooreMachineString(self, round_num):
+    def getMooreMachineString(self, round_num, pad_pwr_2):
         shared_input_str = ''
         # leading 0s in front of bits
         bit_format = '0' + str(self.n_symbol_bits) + 'b'
-        for share in self.my_shares[round_num]:
-            shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
+        # ignore last symbols which are definitely nulls if input was padded for merge sort
+        if pad_pwr_2:
+            n_elements = self.n_sensors * (2**self.n_time_bits)
+            for i in range(n_elements):
+                shared_input_str += format(self.my_shares[round_num][i] & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
+        else:
+            for share in self.my_shares[round_num]:
+                shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
+        print("Round", round_num, self.id, shared_input_str)
         return shared_input_str
 
     def executeMooreMachineEval(self, conn, k, s, round_num, last_round):
-        shared_input_str = self.getMooreMachineString(round_num)
+        shared_input_str = self.getMooreMachineString(round_num, True)
         n = len(shared_input_str)
         self.moore_eval_obj.extend_input(shared_input_str, last_round)
         # print("Input", shared_input_str)
@@ -173,10 +182,10 @@ class Party:
         # for all rounds
         for i in range(len(self.my_shares)):
             # if self.id == "A":
-            #     print("Sort, round", i, "...")
-            # self.executeSort(connections, q, ipc_lock, i, q_OT_count)
-            if self.id == "A":
-                print("Moore machine, round", i, "...")
+                # print("Sort, round", i, "...")
+            self.executeSort(connections, q, ipc_lock, i, q_OT_count)
+            # if self.id == "A":
+                # print("Moore machine, round", i, "...")
             self.executeMooreMachineEval(connections, k, s, i, i==(len(self.my_shares)-1))
         if self.id == "A":
             q.put(self.color_stream)

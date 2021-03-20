@@ -3,7 +3,7 @@ import math
 import otJC_precomputed as otJC
 import secrets
 
-MOORE_MACHINE_OUTPUT_BITS = 4 # need to make some assumption on this for garbled matrix element size
+MOORE_MACHINE_OUTPUT_BITS = 2 # need to make some assumption on this for garbled matrix element size
 
 # p. 7 of Mohassel ODFA paper (Moore Variation)
 def DfaMat(dfa, n):
@@ -49,9 +49,10 @@ def evalDfa(M, n, x, q0):
     return M[n][j][2]
 
 # generate a matrix with n rows m cols, row elements are scrambled indices ranging [0, m).
-def genPerm(n, m):
+def genPerm(n, m, k):
     Q = list(range(0, m))
     PER = []
+    random.seed(secrets.randbits(k))
     for i in range(0, n):
         random.shuffle(Q)
         PER.append(Q[:])
@@ -198,18 +199,17 @@ class Bob:
     def step2(self, dfa, n, k):
         #Generating random pads and a permuted DFA matrix PMΓ
         q = dfa['states']
-        k_prime = (k + math.floor(math.log(q, 2)) + 1)
         GM = [[(0,0,0)] * q for i in range(n + 1)]
         #Server generates n + 1 random key pairs for garbling:
-        a = random.sample(range(0,2**k_prime), n + 1)
-        b = random.sample(range(0,2**k_prime), n + 1)
+        a = random.sample(range(0,2**self.k_prime), n + 1)
+        b = random.sample(range(0,2**self.k_prime), n + 1)
         K = list(zip(a,b))
         #Server generates a random pad matrix PADn×|Q|:
         PAD = [random.sample(range(0,2**k), q) for i in range(n + 2)]
         #server generates a DFA matrix MΓ of length n+1:
         M = DfaMat(dfa, n)
         #server generates a random permutation matrix PERn×|Q|:
-        PER = genPerm(n + 2, q)
+        PER = genPerm(n + 2, q, self.k)
         #server generates a permuted DFA matrix PMΓ:
         PM = permDfaMat(M, PER, self.n, self.q)
         #Computing the Garbled DFA Matrix GMΓ from PMΓ
@@ -229,8 +229,8 @@ class Bob:
                 # ****NOT SECURE BECAUSE SYSTEM RAND DOES NOT HAVE A SET SEED FUNCTION*****
                 # Would need to replace with a cryptographically secure pseudo-random number generator.
                 random.seed(PAD[i][j])
-                a = random.getrandbits(k_prime)
-                b = random.getrandbits(k_prime)
+                a = random.getrandbits(self.k_prime)
+                b = random.getrandbits(self.k_prime)
                 c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
                 pad = (a,b,c)
                 a = GM[i][j][0] ^ pad[0]
@@ -250,9 +250,10 @@ class Bob:
         b = secrets.randbits(self.k_prime + self.s)
         garbled_keypair = (a,b)
         # Server generates a new row to append to PAD:
+        random.seed(secrets.randbits(self.k))
         next_pad_row = random.sample(range(0,2**self.k), self.q)
         # server generates a new row to append to PER:
-        next_per_row = genPerm(1, self.q)[0]
+        next_per_row = genPerm(1, self.q, self.k)[0]
         # server generates a row to append to PM:
         new_pm_row = permDfaMat([self.m_row], [self.PER[len(self.PER) - 1], next_per_row], 1, self.q)[0]
         # Computing the Garbled DFA Matrix GMΓ from PMΓ
@@ -316,7 +317,7 @@ class Bob:
         # later, we must use a cryptographically secure PRNG which supports a setseed operation.
         self.PAD = [[secrets.randbits(self.k) for j in range(self.q)] for i in range(2)]
         # print(self.PAD)
-        self.PER = genPerm(2, self.q)
+        self.PER = genPerm(2, self.q, self.k)
         self.PM = permDfaMat([self.m_row], self.PER, 1, self.q)
         for j in range (0, self.q):
             # could impliment a Mealy Machine with outputs on arcs of the DFA same way,

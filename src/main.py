@@ -66,15 +66,18 @@ def comparison_test_battery():
     if not failure:
         print("Test cases passed!")
 
-def parse_input_files(filename_1, filename_2, n_rounds, n_time_bits, n_sensors):
+def parse_input_files(filename_1, filename_2, n_rounds, n_time_bits, n_sensors, pwr_of_2):
     input_a = []
     input_b = []
+    n_elements = n_sensors * (2**n_time_bits)
+    if pwr_of_2:
+        n_elements = 2**(math.ceil(math.log2(n_elements)))
     with open(filename_1, 'r') as f:
         for j in range(n_rounds):
-            input_a.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
+            input_a.append([int(f.readline()) for i in range(n_elements)])
     with open(filename_2, 'r') as f:
         for j in range(n_rounds):
-            input_b.append([int(f.readline()) for i in range(n_sensors * (2**n_time_bits))])
+            input_b.append([int(f.readline()) for i in range(n_elements)])
     return (input_a, input_b)
 
 # TODO - organize the bulk of the following code into functions to make the main more readable
@@ -185,18 +188,18 @@ if __name__ == '__main__':
     elif mode == 'A':
         infile_a = '../data/shares_a_window='+str(n_time_bits)
         infile_b = '../data/shares_b_window='+str(n_time_bits)
-        input_a, input_b = parse_input_files(infile_a, infile_b, n_rounds, n_time_bits, n_sensors)
+        input_a, input_b = parse_input_files(infile_a, infile_b, n_rounds, n_time_bits, n_sensors, True)
         
         gc_exch = gmw.exchangeCirc()
         gc_comp = gmw.greaterThanCirc(n_time_bits)
         
         alice_input, bob_input = (input_a, input_b)
 
-        network = SortingNetwork('BUBBLE',len(input_a[0]))
+        network = SortingNetwork('BUBBLE',2**(math.ceil(math.log2(len(input_a[0])))))
 
         # both parties own the same gc, but will alter values
-        alice = Party(n_time_bits, n_symbol_bits, alice_input, "A")
-        bob = Party(n_time_bits, n_symbol_bits, bob_input, "B")
+        alice = Party(n_time_bits, n_symbol_bits, alice_input, "A", n_sensors)
+        bob = Party(n_time_bits, n_symbol_bits, bob_input, "B", n_sensors)
         alice.setGC(gc_comp, gc_exch, None)
         bob.setGC(copy.deepcopy(gc_comp), copy.deepcopy(gc_exch), None)
         # both own same network, will not alter values
@@ -206,7 +209,7 @@ if __name__ == '__main__':
         alice.setOTFiles(alice_sender_file, alice_recver_file)
         bob.setOTFiles(bob_sender_file, bob_recver_file)
 
-        k = 8 # security parameter
+        k = 32 # security parameter
         s = 64 # statistical security parameter
         
         connections = Pipe()
@@ -232,6 +235,19 @@ if __name__ == '__main__':
             s += str(col)
         print("Color Stream")
         print(s)
+        # should be 2*n_rounds things in the queue: symbol stream
+        # for i in range(n_rounds):
+        #     if q.empty():
+        #             print("ERROR QUEUE SIZE")
+        #             exit(1)
+        #     res = q.get()
+        #     if q.empty():
+        #             print("ERROR QUEUE SIZE")
+        #             exit(1)
+        #     res2 = q.get()
+        #     xor_symbols = utils.mergeLists(res, res2)
+        #     print("Symbols:", xor_symbols)
+        
         print("Took", end-start, "seconds.")
         alice_sender_file.close()
         alice_recver_file.close()
@@ -242,7 +258,7 @@ if __name__ == '__main__':
             [a * n_rounds for a in ot_recurrence.num_OTs_sort(len(network.swaps), n_time_bits, n_symbol_bits)]
         ots_due_to_symbol_bits_moore = \
             n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3) # n sensors needed
-        print("len of network =", len(network.swaps))
+        print("n =", len(input_a[0]), "len of network =", len(network.swaps))
         output_file = open('testing_output.txt', 'a')
         output_file.write(str(n_rounds) + " " + str(n_time_bits) + " " + \
             str(end-start) + " " + str(OTs_due_to_time_bits_sort) + " " + \

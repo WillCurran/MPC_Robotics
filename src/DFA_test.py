@@ -108,15 +108,9 @@ def test():
         'delta': [(0, 1), (2, 2), (2, 2)], # index is which state. tuple contains the delta from that state if 0 or 1
         'outputs': [0b0000, 0b0001, 0b0010] # moore machine outputs. need to have some assumption of how many bits for garbling.
 		}
-    x_a = input("Alice's input: ")
-    x_b = input("Bob's input: ")
-    n = len(x_a)
-    if n != len(x_b):
-        print('non-matching input size.')
-        return
     xor_input = ''
-    for i in range(n):
-        xor_input += str(int(x_a[i]) ^ int(x_b[i]))
+    for i in range(6):
+        xor_input += '11'
 
     # hopefully more scalable when we move OTs to batch precomputation
     k = 8 # security parameter
