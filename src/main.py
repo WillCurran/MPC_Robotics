@@ -148,8 +148,8 @@ if __name__ == '__main__':
         end = time.time()
         print("Took", end-start, "seconds.")
     elif mode == 'M':
-        k = 8 # security parameter
-        s = 16 # statistical security parameter
+        k = 256 # security parameter
+        s = 64 # statistical security parameter
 
         mpl = multiprocessing.log_to_stderr()
         mpl.setLevel(logging.INFO)

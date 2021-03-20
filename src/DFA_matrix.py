@@ -159,7 +159,7 @@ class Alice:
         self.input = alice_input
         self.q = q
         self.k = k
-        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
+        self.k_prime = self.k + math.ceil(math.log(self.q, 2))
         self.s = s
         self.state = None
         self.pad = None
@@ -304,7 +304,7 @@ class Bob:
 
         # start with 1 row of M, 1 row of PM, 1 row GM, 2 rows PER, 2 rows PAD, 1 garbled keypair
         self.q = dfa['states']
-        self.k_prime = (self.k + math.floor(math.log(self.q, 2)) + 1)
+        self.k_prime = self.k + math.ceil(math.log(self.q, 2))
         new_gm_row = [(0,0,0)] * self.q
         # Server generates 1 random keypair for garbling:
         a = secrets.randbits(self.k_prime + self.s)
