@@ -33,7 +33,7 @@ Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier i
 
 ## Beam Reader:
 Usage Example: 
-py BeamReader.py {START TIME} {END TIME(NON-INCLUSIVE)} [LIST OF BEAM LABELS]
+py BeamReader.py {START TIME} {END TIME(NON-INCLUSIVE)} {PAD UP TO PWR OF 2 (T/F)} [LIST OF BEAM LABELS]
 py BeamReader.py 5 10 a b c
 
 ## Python Packages: 

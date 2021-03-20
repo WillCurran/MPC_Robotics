@@ -23,6 +23,7 @@ def read_delete_and_create_again(file_name):
     file.write(file_data)
     file.close()
 
+
 def print_func(lock, file_name, label_index, start, end, num_beams):
     sensor_bits = math.ceil(math.log2(num_beams+1)) # beams, plus null symbol
     sensor_max = 2**sensor_bits-1
@@ -36,6 +37,8 @@ def print_func(lock, file_name, label_index, start, end, num_beams):
             if current_value >= end-start:
                 break
             data[current_value] = label_index
+    
+
     f = open(file_name, "r")
     file_data = f.readlines()
     f.close()
@@ -66,7 +69,10 @@ if __name__ == "__main__":  # confirms that the code is under main function
     start = int(sys.argv[1])
     end = int(sys.argv[2])
     time_window = 2**int(sys.argv[3])
-    names = sys.argv[4:]
+    # pad_pwr_2 used if desired data is padded with null symbols until len=next pwr of 2
+    pad_pwr_2 = bool(sys.argv[4])
+    # print("pad: ", pad_pwr_2)
+    names = sys.argv[5:]
     procs = []
     lock = Lock()
     # instantiating process with arguments
@@ -76,7 +82,26 @@ if __name__ == "__main__":  # confirms that the code is under main function
             proc = Process(target=print_func, args=(lock,names[i],i,s,s+time_window,len(names)))
             procs.append(proc)
             proc.start()
-
         # complete the processes
         for proc in procs:
             proc.join()
+        # pad end if enabled
+        if pad_pwr_2:
+            n_lines = time_window * len(names)
+            next_pwr_2 = 2**(math.ceil(math.log2(n_lines)))
+            sensor_bits = math.ceil(math.log2(len(names)+1)) # beams, plus null symbol
+            sensor_max = 2**len(names)-1
+            time_bits = math.ceil(math.log2(time_window))
+            time_max = time_window - 1
+            file_shares_a = open(FILE_NAME_SHARES_A, 'a')
+            file_shares_b = open(FILE_NAME_SHARES_B, 'a')
+            # pad with nulls
+            for i in range(n_lines, next_pwr_2, 1):
+                plain_number = (time_max << sensor_bits) + sensor_max
+                random_number = random.getrandbits(sensor_bits + time_bits)
+                share_a = random_number
+                share_b = plain_number ^ random_number
+                file_shares_a.write(str(share_a) + '\n')
+                file_shares_b.write(str(share_b) + '\n')
+            file_shares_a.close()
+            file_shares_b.close()
