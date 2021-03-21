@@ -145,7 +145,6 @@ class Party:
         else:
             for share in self.my_shares[round_num]:
                 shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
-        print("Round", round_num, self.id, shared_input_str)
         return shared_input_str
 
     def executeMooreMachineEval(self, conn, k, s, round_num, last_round):
@@ -154,16 +153,16 @@ class Party:
         self.moore_eval_obj.extend_input(shared_input_str, last_round)
         # print("Input", shared_input_str)
         if self.id == 'A':
-            print("Alice", round_num)
+            # print("Alice", round_num)
             new_GM_rows = conn.recv()
             # self.moore_eval_obj.extend_GM(new_GM_rows)
             if round_num == 0:
-                self.color_stream.append(self.moore_eval_obj.revealColor(new_GM_rows, n))
+                self.color_stream.append(self.moore_eval_obj.revealColor(new_GM_rows))
             for i in range(n):
                 # send encrypted choice
-                self.moore_eval_obj.encrypt_input_i()
+                self.moore_eval_obj.encrypt_input_i(round_num, n)
                 # wait for garbled keys and evaluate
-                self.color_stream.append(self.moore_eval_obj.step3(new_GM_rows, n))
+                self.color_stream.append(self.moore_eval_obj.step3(new_GM_rows, round_num, n))
             self.moore_eval_obj.resetRowI()
         else:
             # one extra row?, so alice can get color at end every time

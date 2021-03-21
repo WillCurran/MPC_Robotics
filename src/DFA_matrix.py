@@ -93,10 +93,10 @@ def hasNTrailingZeros(number, n):
 class Alice:
     # Client encrypts her input at her current row_i and sends it to server in the form
     # (c_enc_a, c_prime_enc_a)
-    def encrypt_input_i(self):
+    def encrypt_input_i(self, round_num, n):
         self.r_d = otJC.alice_send_choices_enc(
             self.conn, 
-            int(self.input[self.row_i]), 
+            int(self.input[round_num*n + self.row_i]), 
             self.k_prime,
             self.s,
             self.ot_receiver_open_file
@@ -104,7 +104,7 @@ class Alice:
 
     # used for getting the output at current state, without advancing to the next state yet.
     # we use this for revealing the output at the last row of the GM
-    def revealColor(self, GM, n):
+    def revealColor(self, GM):
         random.seed(self.pad)
         # throw away first two pads
         for i in range(2):
@@ -122,11 +122,11 @@ class Alice:
         self.row_i = 0
 
     # Client retrieves the keys and computes the final result.
-    def step3(self, GM, n):
+    def step3(self, GM, round_num, n):
         # decrypt garbled key
         k_i = otJC.alice_compute_result(
             self.conn,
-            int(self.input[self.row_i]), 
+            int(self.input[round_num*n + self.row_i]), 
             self.r_d, 
             self.k_prime,
             self.s
@@ -150,7 +150,7 @@ class Alice:
         self.row_i += 1
         # color at the resulting state
         # print("ALICE STATE", self.state, "ROW_I", self.row_i)
-        return self.revealColor(GM, n)
+        return self.revealColor(GM)
 
     def init_state_and_pad(self, init_state_index, init_pad):
         self.state = init_state_index

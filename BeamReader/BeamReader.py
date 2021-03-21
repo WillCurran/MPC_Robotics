@@ -90,7 +90,7 @@ if __name__ == "__main__":  # confirms that the code is under main function
             n_lines = time_window * len(names)
             next_pwr_2 = 2**(math.ceil(math.log2(n_lines)))
             sensor_bits = math.ceil(math.log2(len(names)+1)) # beams, plus null symbol
-            sensor_max = 2**len(names)-1
+            sensor_max = 2**sensor_bits-1
             time_bits = math.ceil(math.log2(time_window))
             time_max = time_window - 1
             file_shares_a = open(FILE_NAME_SHARES_A, 'a')
