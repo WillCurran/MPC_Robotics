@@ -1,35 +1,17 @@
+## Disclaimer
+- This is an implementation of the protocol defined by Bobadilla, Shell, Rojas and Curran (2021)
+- It includes rudimentary from-scratch implementations of GMW Protocol and Oblivious DFA evaluation [Zhao et. al], with two parties simulated by separate processes on the same machine.
+- We make no claims of real security in this implementation because we are not CPython experts, nor are we practical security experts.
+- The main purpose of this repository is to act as a local proof of concept implementation, and it does not consider some practical necessities which are normally a given when communicating over a public channel.
+
+## User notes
+- src/main.py is the primary program. It offers several modes of operation, but the primary one is 'Automatic' Mode, which consumes data from the data/ directory, then performs several rounds of execution of a secure sort, followed by a secure moore machine evaluation.
+- If you're interested in how the code works, some good places to start are src/Party.py, src/DFA_matrix.py and src/garbled_circuit.py
+- BeamReader/BeamReader.py provides a way to generate secret-shared files if given files containing times of sensor observations. We run a simulator in a separate private repository to generate the sensor observations. Once the secret-shared files are generated in shares_a and shares_b, they can be transferred to the data/ directory to be consumed by the main program.
+- A key component of both sorting and moore machine evaluation is oblivious transfer. We assume that single-bit random oblivious transfers have already been precomputed between the two parties, and the results are stored in the files a.txt, b.txt, a1.txt, b1.txt, where 'a' means sender and 'b' means receiver. OTs can be very expensive, since they require asymmetric operations and sometimes many rounds of communication between parties.
+
 ## Moore Machine notes:
-- In M and PM representations of a DFA, the third number in the tuple is whatever output you want at that state. The default for output is a 4-bit number indicating which state we are at, which makes it clear that the garbled matrix evaluation is operating correctly. It also highlights the fact that there may be security issues if a state’s output gives too much away about which state we are at.
-- We have to assume some bit string length for the output because in our garbled matrix representation, we mix the outputs in with the deltas in order to encrypt them. Of the form: (delta_index_0_concat_output, delta_index_1_concat_output) , where output is the same for both deltas. 
-- Output currently indicates the output at the current state, not the next state which the corresponding delta index points to. However, we could implement a “Mealy Machine” version, where outputs happen along arcs in the DFA rather than at states
-- Currently only supports inputs of length 3
-- Oblivious Transfer is not fully randomized
-- Security parameter is set to a low number. Need to add ability to crank 'k' up higher.
-
-## To-dos:
-- Get working for larger numbers (add randomness in OT)
-- Get working for larger security parameters (Python int size question?)
-- Interface with an input file from beams simulation
-- Generate chunks of Garbled Matrix in a smarter way (Currently adding one line at a time. In the end, will need to have dynamic size since we're processing a possibly neverending stream of inputs)
-- Put Alice and Bob into different processes (This might involve linking up with the GMW code so may not need to do a lot of extra work here)
-- Add in batch OT and random OT pre-computation (Same story as above)
-
-Run with 'python3 incremental_moore_JI/DFA_test.py'. Must have python-paillier installed.
-
-## GMW Protocol current status:
-- 2-party digital comparator of a single bit is implemented
-- caveat: Need to implement 1-out-of-4 OT still. Ran into issues implementing Malek and Miri 2013 protocol with python-paillier. May go an (easier?) route which uses several 1-out-of-2 OT calls if it is simpler.
-  - (https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1512846)
-=======
-## GMW Protocol / Sorting Network notes:
-- in progress
-
-## To-dos:
-- Add OT and random OT pre-computation
-- Get working for larger numbers (parallelize OT)
-- Add sorting network data structure and evaluation
-- link with Moore Machine code
-- interface with input from simulation (add additional layer of sensor parties in other processes)
+- Security parameter 'k' and statistical security parameter 's' can be set to different values depending on security requirements. They provide a tradeoff between security and performance
 
 ## Beam Reader:
 Usage Example: 
