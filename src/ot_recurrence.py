@@ -50,6 +50,6 @@ def num_OTs_sort(n_swaps, n_time_bits, n_symbol_bits):
 # OTs in non-reduced case is a multiple of time_interval, n_sensors and n_symbol_bits
 
 # Each sensor sends one symbol for each possible time. 
-# Each symbol requires the machine to process all of its bits.
-def numOTs_moore_machine_eval_one_round(time_interval_max_t, n_symbol_bits, n_sensors):
-    return n_sensors * time_interval_max_t * n_symbol_bits
+# Need one garbled key exchange for each symbol bit.
+def numOTs_moore_machine_eval_one_round(time_interval_max_t, n_symbol_bits, n_sensors, k_prime, s):
+    return n_sensors * time_interval_max_t * n_symbol_bits * (k_prime + s)

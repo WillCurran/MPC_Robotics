@@ -195,7 +195,9 @@ if __name__ == '__main__':
         
         alice_input, bob_input = (input_a, input_b)
 
-        network = SortingNetwork('BUBBLE',2**(math.ceil(math.log2(len(input_a[0])))))
+        n = 2**(math.ceil(math.log2(len(input_a[0]))))
+        print("n =", n)
+        network = SortingNetwork('ODD-EVEN-MERGE',n)
 
         # both parties own the same gc, but will alter values
         alice = Party(n_time_bits, n_symbol_bits, alice_input, "A", n_sensors)
@@ -209,7 +211,7 @@ if __name__ == '__main__':
         alice.setOTFiles(alice_sender_file, alice_recver_file)
         bob.setOTFiles(bob_sender_file, bob_recver_file)
 
-        k = 32 # security parameter
+        k = 256 # security parameter
         s = 64 # statistical security parameter
         
         connections = Pipe()
@@ -230,11 +232,11 @@ if __name__ == '__main__':
                 print("ERROR QUEUE SIZE")
                 exit(1)
         res = q.get()
-        s = ''
+        _s = ''
         for col in res:
-            s += str(col)
+            _s += str(col)
         print("Color Stream")
-        print(s)
+        print(_s)
         # should be 2*n_rounds things in the queue: symbol stream
         # for i in range(n_rounds):
         #     if q.empty():
@@ -253,17 +255,18 @@ if __name__ == '__main__':
         alice_recver_file.close()
         bob_sender_file.close()
         bob_recver_file.close()
-
+        n_states = 12                               # number of states in Moore machine = 12
+        k_prime = k + math.ceil(math.log2(n_states))
         [OTs_due_to_time_bits_sort, OTs_due_to_symbol_bits_sort, OT_rounds_sort] = \
             [a * n_rounds for a in ot_recurrence.num_OTs_sort(len(network.swaps), n_time_bits, n_symbol_bits)]
         ots_due_to_symbol_bits_moore = \
-            n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3) # n sensors needed
+            n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3, k_prime, s) # n sensors needed
         print("n =", len(input_a[0]), "len of network =", len(network.swaps))
-        output_file = open('testing_output.txt', 'a')
+        output_file = open('../Graphs/testing_output.txt', 'a')
         output_file.write(str(n_rounds) + " " + str(n_time_bits) + " " + \
             str(end-start) + " " + str(OTs_due_to_time_bits_sort) + " " + \
             str(OTs_due_to_symbol_bits_sort) + " " + str(OT_rounds_sort) + " " + \
-            str(ots_due_to_symbol_bits_moore) + "\n")
+            str(ots_due_to_symbol_bits_moore) + " " + str(n_rounds) + "\n")
         output_file.close()
         # Can enable actual OT counts to verify by uncommenting a line in gate eval and passing a real queue
         # ots = 0

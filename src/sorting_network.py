@@ -36,13 +36,14 @@ def odd_even_merge_sort(lo, n, sorted_halves):
         m = n//2
         if not(sorted_halves):
             swaps = swaps + odd_even_merge_sort(lo, m, False) + odd_even_merge_sort(lo + m, m, False)
-        swaps = swaps + odd_even_merge(lo, n, 1)
+        swaps = swaps + odd_even_merge(lo, n, True)
     return swaps
 def odd_even_merge(lo, n, r):
     swaps = []
     m = r*2
     if(m < n):
-        swaps = swaps + odd_even_merge(lo, n, m) + odd_even_merge(lo+r, n, m)
+        swaps = swaps + odd_even_merge(lo, n, m)    # even
+        swaps = swaps + odd_even_merge(lo+r, n, m)  # odd
         for i in range(lo+r, lo+n-r, m):
             swaps.append((i,i+r))
     else:

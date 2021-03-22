@@ -195,53 +195,6 @@ class Bob:
         # if alice_i == 12:
         #     print(strs)
 
-    # Server Computes a Garbled DFA Matrix GM
-    def step2(self, dfa, n, k):
-        #Generating random pads and a permuted DFA matrix PMΓ
-        q = dfa['states']
-        GM = [[(0,0,0)] * q for i in range(n + 1)]
-        #Server generates n + 1 random key pairs for garbling:
-        a = random.sample(range(0,2**self.k_prime), n + 1)
-        b = random.sample(range(0,2**self.k_prime), n + 1)
-        K = list(zip(a,b))
-        #Server generates a random pad matrix PADn×|Q|:
-        PAD = [random.sample(range(0,2**k), q) for i in range(n + 2)]
-        #server generates a DFA matrix MΓ of length n+1:
-        M = DfaMat(dfa, n)
-        #server generates a random permutation matrix PERn×|Q|:
-        PER = genPerm(n + 2, q, self.k)
-        #server generates a permuted DFA matrix PMΓ:
-        PM = permDfaMat(M, PER, self.n, self.q)
-        #Computing the Garbled DFA Matrix GMΓ from PMΓ
-        for i in range (0, n + 1):
-            for j in range (0, q):
-                # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
-                # right now we just have the Moore Machine output copied twice
-                # a = numConcat(PM[i][j][0], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
-                a = numConcat(PM[i][j][0], PAD[i+1][PM[i][j][0] ], k)
-                # b = numConcat(PM[i][j][1], PM[i][j][2], MOORE_MACHINE_OUTPUT_BITS)
-                b = numConcat(PM[i][j][1], PAD[i+1][PM[i][j][1] ], k)
-                c = PM[i][j][2]
-                a = a ^ K[i][0]
-                b = b ^ K[i][1]
-                GM[i][j] = (a,b,c)
-                # Pseudo Random Number Generator G 
-                # ****NOT SECURE BECAUSE SYSTEM RAND DOES NOT HAVE A SET SEED FUNCTION*****
-                # Would need to replace with a cryptographically secure pseudo-random number generator.
-                random.seed(PAD[i][j])
-                a = random.getrandbits(self.k_prime)
-                b = random.getrandbits(self.k_prime)
-                c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
-                pad = (a,b,c)
-                a = GM[i][j][0] ^ pad[0]
-                b = GM[i][j][1] ^ pad[1]
-                c = GM[i][j][2] ^ pad[2]
-                GM[i][j] = (a,b,c)
-        K_enc = K # TODO - encrypt with OT public key and transfer via OT
-        init_state = PER[0][dfa['initial'] ]
-        init_pad = PAD[0][init_state]
-        return (M, PER, PM, K_enc, GM, init_state, init_pad) # TODO - remove M, PER, PM when not testing/debugging
-
     def append_GM_row(self):
         new_gm_row = [(0,0,0)] * self.q
         # Server generates 1 random keypair for garbling:
@@ -250,8 +203,7 @@ class Bob:
         b = secrets.randbits(self.k_prime + self.s)
         garbled_keypair = (a,b)
         # Server generates a new row to append to PAD:
-        random.seed(secrets.randbits(self.k))
-        next_pad_row = random.sample(range(0,2**self.k), self.q)
+        next_pad_row = [secrets.randbits(self.k) for i in range (self.q)]
         # server generates a new row to append to PER:
         next_per_row = genPerm(1, self.q, self.k)[0]
         # server generates a row to append to PM:
