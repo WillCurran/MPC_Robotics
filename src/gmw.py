@@ -46,35 +46,33 @@ def exchangeCirc():
     INPUT_BUS_A = gc.insertGate(GateType.INPUT_BUS)
     INPUT_BUS_B = gc.insertGate(GateType.INPUT_BUS)
     INPUT_BUS_C = gc.insertGate(GateType.INPUT_BUS)
-    not_1 = gc.insertGate(GateType.NOT)
     and_1 = gc.insertGate(GateType.AND)
     and_2 = gc.insertGate(GateType.AND)
-    and_3 = gc.insertGate(GateType.AND)
-    and_4 = gc.insertGate(GateType.AND)
     xor_1 = gc.insertGate(GateType.XOR)
     xor_2 = gc.insertGate(GateType.XOR)
+    xor_3 = gc.insertGate(GateType.XOR)
+    xor_4 = gc.insertGate(GateType.XOR)
     OUTPUT_BUS_A = gc.insertGate(GateType.OUTPUT_BUS)
     OUTPUT_BUS_B = gc.insertGate(GateType.OUTPUT_BUS)
 
-    gc.insertWire(_source=INPUT_BUS_C, _destination=not_1)
-
     gc.insertWire(_source=INPUT_BUS_A, _destination=and_1)
-    gc.insertWire(_source=INPUT_BUS_A, _destination=and_2)
-    gc.insertWire(_source=INPUT_BUS_B, _destination=and_3)
-    gc.insertWire(_source=INPUT_BUS_B, _destination=and_4)
+    gc.insertWire(_source=INPUT_BUS_A, _destination=xor_1)
+    gc.insertWire(_source=INPUT_BUS_B, _destination=xor_2)
+    gc.insertWire(_source=INPUT_BUS_B, _destination=and_2)
 
     gc.insertWire(_source=INPUT_BUS_C, _destination=and_1)
-    gc.insertWire(_source=not_1, _destination=and_2)
-    gc.insertWire(_source=not_1, _destination=and_3)
-    gc.insertWire(_source=INPUT_BUS_C, _destination=and_4)
+    gc.insertWire(_source=INPUT_BUS_C, _destination=and_2)
 
-    gc.insertWire(_source=and_1, _destination=xor_2)
-    gc.insertWire(_source=and_2, _destination=xor_1)
-    gc.insertWire(_source=and_3, _destination=xor_2)
-    gc.insertWire(_source=and_4, _destination=xor_1)
+    gc.insertWire(_source=and_1, _destination=xor_1)
+    gc.insertWire(_source=and_2, _destination=xor_2)
 
-    gc.insertWire(_source=xor_1, _destination=OUTPUT_BUS_A)
-    gc.insertWire(_source=xor_2, _destination=OUTPUT_BUS_B)
+    gc.insertWire(_source=and_1, _destination=xor_4)
+    gc.insertWire(_source=xor_1, _destination=xor_3)
+    gc.insertWire(_source=xor_2, _destination=xor_4)
+    gc.insertWire(_source=and_2, _destination=xor_3)
+
+    gc.insertWire(_source=xor_3, _destination=OUTPUT_BUS_A)
+    gc.insertWire(_source=xor_4, _destination=OUTPUT_BUS_B)
     return gc
 
 # equal-to circuit, logarithmic in depth of AND gates

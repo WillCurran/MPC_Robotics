@@ -27,7 +27,7 @@ def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
     num_and_rounds_compare = math.ceil(math.log2(n_time_bits)) + 1
 
     # exchange AND gates, per (n_time_bits+n_symbol_bits)-bit word
-    num_and_gates_exchange_per_word = 4
+    num_and_gates_exchange_per_word = 2
     # exchange depth
     num_and_rounds_exchange = 1
 

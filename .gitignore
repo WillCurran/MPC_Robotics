@@ -4,3 +4,4 @@ BeamReader/shares_*
 .vscode*
 src/ODD-EVEN*
 src/testing*
+*.pgf
