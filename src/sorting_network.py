@@ -19,7 +19,12 @@ class SortingNetwork:
                 for j in range(n-i-1):
                     self.swaps.append((j, j+1))
         elif type == 'ODD-EVEN-MERGE':
-            self.swaps = odd_even_merge_sort(0,n, True)
+            # TODO - make dynamic for n sensors, currently hard-coded for 3
+            # top two sensors provide sorted subsequences:
+            self.swaps = odd_even_merge_sort(0,n//2, True)
+            # bottom sensor is sorted, and it is padded below by max, so already sorted.
+            # now merge top and bottom:
+            self.swaps.extend(odd_even_merge_sort(0,n, True))
             save_swaps(self.swaps, type + str(n))
         # print(self.swaps)
         
