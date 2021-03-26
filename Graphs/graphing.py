@@ -62,32 +62,32 @@ x_scale = 0.6
 
 # Graph 3: Rounds of OTs
 
-fig, ax = plt.subplots()
-ax.ticklabel_format(axis='y', style='sci', scilimits=(0,3))
+# fig, ax = plt.subplots()
+# ax.ticklabel_format(axis='y', style='sci', scilimits=(0,3))
 
 
-ax.bar([x_scale*i for i in w], OT_rounds_sort, width, label='OT rounds (sort)')
-ax.bar([x_scale*i for i in w], OT_rounds_moore, width, bottom=OT_rounds_sort, label='OT rounds (moore)')
-plt.xticks([x_scale*i for i in w], w)
-for i in range(7):
-    ax.text(x_scale*(i+0.6), 100+OT_rounds_sort[i]+OT_rounds_moore[i], str(run_time[i])[0:5], \
-        color='black', fontweight='bold')
+# ax.bar([x_scale*i for i in w], OT_rounds_sort, width, label='OT rounds (sort)')
+# ax.bar([x_scale*i for i in w], OT_rounds_moore, width, bottom=OT_rounds_sort, label='OT rounds (moore)')
+# plt.xticks([x_scale*i for i in w], w)
+# for i in range(7):
+#     ax.text(x_scale*(i+0.6), 100+OT_rounds_sort[i]+OT_rounds_moore[i], str(run_time[i])[0:5], \
+#         color='black', fontweight='bold')
 
-ax.set_ylabel('OT rounds')
-ax.set_xlabel('w')
-ax.set_title('OT Rounds vs. Time Window')
-ax.set_position([0.1, 0.1, 0.7, 0.8])
-ax.legend()
+# ax.set_ylabel('OT rounds')
+# ax.set_xlabel('w')
+# ax.set_title('OT Rounds vs. Time Window')
+# ax.set_position([0.1, 0.1, 0.7, 0.8])
+# ax.legend()
 
-fig.tight_layout()
-fig.set_size_inches(w=4, h=3.75)
-plt.show()
+# fig.tight_layout()
+# fig.set_size_inches(w=4, h=3.75)
+# plt.show()
 
-matplotlib.use("pgf")
-matplotlib.axes.Axes.bar
-matplotlib.pyplot.bar
-matplotlib.axes.Axes.annotate
-matplotlib.pyplot.annotate
+# matplotlib.use("pgf")
+# matplotlib.axes.Axes.bar
+# matplotlib.pyplot.bar
+# matplotlib.axes.Axes.annotate
+# matplotlib.pyplot.annotate
 # matplotlib.rcParams.update({
 #     "pgf.texsystem": "pdflatex",
 #     'font.family': 'serif',
