@@ -18,27 +18,27 @@ x_scale = 0.6
 
 # GRAPH 1: OTs
 
-# fig, ax = plt.subplots()
-# ax.ticklabel_format(axis='y', style='sci', scilimits=(0,1))
+fig, ax = plt.subplots()
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,1))
 
 
-# ax.bar([x_scale*i for i in w], OTs_time_sort, width, label='time bits (sort)')
-# ax.bar([x_scale*i for i in w], OTs_symb_sort, width, bottom=OTs_time_sort, label='symbol bits (sort)')
-# ax.bar([x_scale*i for i in w], OTs_moore, width, bottom=OTs_sort, label='symbol bits (moore)')
-# plt.xticks([x_scale*i for i in w], w)
-# for i in range(7):
-#     ax.text(x_scale*(i+0.62), 5000+OTs_time_sort[i]+OTs_symb_sort[i]+OTs_moore[i], str(run_time[i])[0:5], \
-#         color='black', fontweight='bold')
+ax.bar([x_scale*i for i in w], OTs_time_sort, width, label='time bits (sort)')
+ax.bar([x_scale*i for i in w], OTs_symb_sort, width, bottom=OTs_time_sort, label='symbol bits (sort)')
+ax.bar([x_scale*i for i in w], OTs_moore, width, bottom=OTs_sort, label='symbol bits (moore)')
+plt.xticks([x_scale*i for i in w], [2**w[i] for i in range(len(w))])
+for i in range(7):
+    ax.text(x_scale*(i+0.62), 5000+OTs_time_sort[i]+OTs_symb_sort[i]+OTs_moore[i], str(run_time[i])[0:5], \
+        color='black', fontweight='bold')
 
-# ax.set_ylabel('OTs')
-# ax.set_xlabel('w')
-# ax.set_title('Runtime OTs vs. Time Window')
-# ax.set_position([0.1, 0.1, 0.7, 0.8])
+ax.set_ylabel('OTs')
+ax.set_xlabel('L')
+ax.set_title('Runtime OTs vs. Time Window')
+ax.set_position([0.1, 0.1, 0.7, 0.8])
 # ax.legend()
 
-# fig.tight_layout()
-# fig.set_size_inches(w=4, h=3.75)
-# plt.show()
+fig.tight_layout()
+fig.set_size_inches(w=4, h=3.75)
+plt.show()
 
 # GRAPH 2: Rounds of communication sensors-->privacy peers
 

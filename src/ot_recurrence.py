@@ -51,5 +51,6 @@ def num_OTs_sort(n_swaps, n_time_bits, n_symbol_bits):
 
 # Each sensor sends one symbol for each possible time. 
 # Need one garbled key exchange for each symbol bit.
-def numOTs_moore_machine_eval_one_round(time_interval_max_t, n_symbol_bits, n_sensors, k_prime, s):
-    return n_sensors * time_interval_max_t * n_symbol_bits * (k_prime + s)
+def numOTs_moore_machine_eval_one_round(n_symbols_per_round, n_symbol_bits, n_sensors, k_prime, s):
+    return n_sensors * n_symbols_per_round * n_symbol_bits * (k_prime + s)
+

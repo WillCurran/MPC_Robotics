@@ -50,7 +50,11 @@ fig, ax = plt.subplots()
 
 # log scale y
 ots = [math.log2(ots[i]) for i in range(128)]
+# sort_time_ots = [math.log2(moore_ots[i]+sort_time_ots[i]) for i in range(128)]
+sort_sym_ots = [math.log2(moore_ots[i]+sort_sym_ots[i]) for i in range(128)]
 moore_ots = [math.log2(moore_ots[i]) for i in range(128)]
+
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 # search for intersection
 j = 0
@@ -68,23 +72,44 @@ outline_x = [math.log2(l) for l in L]
 outline_x.append(7)
 outline_y = moore_ots
 outline_y.append(moore_ots[0])
-plt.fill(outline_x, outline_y, 'g', label='symbol bits (moore)')
+plt.fill(outline_x, outline_y, colors[2], label='symbol bits (moore)')
+
+outline_x = [math.log2(l) for l in L]
+outline_x.extend([math.log2(L[i]) for i in range(127, -1, -1)])
+outline_y = sort_sym_ots
+outline_y.extend([moore_ots[i] for i in range(127, -1, -1)])
+plt.fill(outline_x, outline_y, colors[1], label='symbol bits (sort)')
 
 outline_x = [math.log2(l) for l in L]
 outline_x.extend([math.log2(L[i]) for i in range(127, -1, -1)])
 outline_y = ots
-outline_y.extend([moore_ots[i] for i in range(127, -1, -1)])
-plt.fill(outline_x, outline_y, 'b', label='time bits (moore)')
+outline_y.extend([sort_sym_ots[i] for i in range(127, -1, -1)])
+plt.fill(outline_x, outline_y, colors[0], label='time bits (sort)')
 
-ax.set_ylabel('OT rounds')
+ticks = [2, 4, 8, 16, 32, 64, 128]
+plt.xticks([math.log2(ticks[i]) for i in range(7)], ticks)
+ax.set_ylabel('OTs')
 ax.set_xlabel('L')
-ax.set_title('Sparse vs. Padded Comparison')
-# ax.set_position([0.1, 0.1, 0.7, 0.8])
-ax.legend()
+ax.set_title('OTs (Sparse vs. Padded)')
+ax.set_position([0.1, 0.1, 0.7, 0.8])
+# ax.legend()
+
+handles,labels = ax.get_legend_handles_labels()
 
 fig.tight_layout()
 fig.set_size_inches(w=4, h=3.75)
 plt.show()
+
+# fig1, axe = plt.subplots()
+# axe.legend(handles, labels)
+# axe.xaxis.set_visible(False)
+# axe.yaxis.set_visible(False)
+# for v in axe.spines.values():
+#     v.set_visible(False)
+# axe.set_position([0.65, 0.5, 0.3, 0.5])
+# fig1.set_size_inches(w=2.25, h=0.8)
+# plt.show()
+
 
 matplotlib.use("pgf")
 matplotlib.axes.Axes.bar
