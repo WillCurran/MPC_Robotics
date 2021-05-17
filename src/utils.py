@@ -31,6 +31,35 @@ def equality(a, b, n):
     b_2 = (b >> half1) & bitmask(0, half2-1)
     return equality(a_1, b_1, half1) & equality(a_2, b_2, half2)
 
+def bitarrayToInt(b):
+    num = 0
+    for bit in b:
+        assert(bit == 0 or bit == 1)
+        num = (num << 1) | bit
+    return num
+
+# input: array of m-bit integers, index < m (idx is left->right)
+# output: bitarray of bits found at index of each item
+def getIthBitArray(a, m, idx):
+    ret = []
+    mask = bitmask(m - idx - 1, m - idx - 1) # from left->right
+    for item in a:
+        b = (mask & item) >> (m - idx - 1)
+        ret.append(b)
+    return ret
+
+# input: array of m-bit integers, index < m (idx is left->right)
+# output: int composed of bits found at index of each item
+# essentially: if the array is treated as a bit matrix, then
+#               getting a column of bits as an integer
+def getIthBitInt(a, m, idx):
+    ret = 0
+    mask = bitmask(m - idx - 1, m - idx - 1) # from left->right
+    for item in a:
+        b = (mask & item) >> (m - idx - 1)
+        ret = (ret << 1) | b
+    return ret
+
 # compare two numbers a, b (indices i, j of start of bit string we're looking at)
 # def compare(a, b, i, j, n_bits_i, n_bits_j):
 #     # just compute a greater than circuit for one bit
