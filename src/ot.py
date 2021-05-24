@@ -14,7 +14,7 @@ import secrets
 from multiprocessing import Process, Pipe
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHAKE128
+from Crypto.Hash import SHAKE128        # Asharov/Lindell/Schneider/Zohner 2013 use SHA-1 so SHA-3 should be fine
 import utils
 import math
 import sys
@@ -107,7 +107,7 @@ def ishai_receiver(conn, choice_arr, N, e, k, l):
         h = SHAKE128.new(data=col.to_bytes(nBytesK, byteorder='big')).read(nBytesL)
         Z.append(Y[i][choice_arr[i]] ^ int.from_bytes(h, byteorder='big'))
     print('Z=', Z)
-    return Z
+    conn.send(('Z', Z)) # recover Z in main()
 
 # extend k OTs to m OTs of l-bit strings (Ishai, Fig. 1 algorithm)
 def ishai_sender(conn, pairs, N, e, k, l):
@@ -133,8 +133,6 @@ def ishai_sender(conn, pairs, N, e, k, l):
 # pairs is of format [(int, int) ...] and choices is of format [int, ...]
 def test(pairs, choices):
     assert(len(pairs) == len(choices))
-    #DEBUG
-    # N = 1024
     N = 2048
     e = 65537
     k = 8
@@ -146,4 +144,30 @@ def test(pairs, choices):
     p_b.start()
     p_a.join()
     p_b.join()
+
+# k seed OTs of length k?, n 1-bit random OTs
+def generatePrecomputedFiles(k, n):
+    f_a = open('a.txt', 'w')
+    pairs = [(secrets.randbits(1), secrets.randbits(1)) for i in range(n)]
+    choices = [secrets.randbits(1) for i in range(n)]
+    for i in range(n):
+        s_a = str(pairs[i][0]) + ' ' + str(pairs[i][1]) + '\n'
+        f_a.write(s_a)
+    f_a.close()
+    N = 2048
+    e = 65537
+    l = 1
+    parent_conn, child_conn = Pipe()
+    p_a = Process(target=ishai_receiver, args=(parent_conn, choices, N, e, k, l,))
+    p_b = Process(target=ishai_sender, args=(child_conn, pairs, N, e, k, l,))
+    p_a.start()
+    p_b.start()
+    p_a.join()
+    p_b.join()
+    Z = child_conn.recv()[1]
+    f_b = open('b.txt', 'w')
+    for i in range(n):
+        s_b = str(choices[i]) + ' ' + str(Z[i]) + '\n'
+        f_b.write(s_b)
+    f_b.close()
 
