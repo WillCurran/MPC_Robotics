@@ -1,7 +1,13 @@
-# perform a 1-out-of-2 OT, based on basic semi-honest OT implementation in Pragmatic MPC
-
+# This is the nuts and bolts file which does actual oblivious transfer in a multiprocessing context.
+# Performs a 1-out-of-2 OT, based on basic semi-honest OT implementation in Pragmatic MPC.
+# The end goal for us is to use a 1-out-of-2 OT to do a large batch of OTs which the main
+# program can consume. Uses Ishai 2003 for OT extension.
 # Does not perform authentication. Assumes parties are certified/authentic.
 # Key exchange is also trivialized. Just sends public keys in plaintext.
+# A multiprocessing context is what we decided provides the minimum platform for demonstrating our methods,
+# and does not make sense from a practical standpoint or a security standpoint.
+# A fully functional practical implementation would involve replacing multi-process communication with 
+# TCP/IP communication protocols, in addition to using a language more suited to efficient oblivious transfer.
 
 # receiver: 
 #   input - two bits b0, b1.
@@ -105,7 +111,7 @@ def receiver_exec_ot_k_m(conn, choice_arr, m, N, e):
     for i in range(k):
         random.seed(seeds[i])
         ret.append(masked[i][choice_arr[i]] ^ random.getrandbits(m))
-    print(ret)
+    # print(ret)
     return ret
 
 # 1-out-of-2 OTs, where pair items are m bits long and there are k pairs to choose from
@@ -123,31 +129,33 @@ def sender_exec_ot_k_m(conn, pairs, m, N):
         random.seed(rand_strs[i][1])
         masked1 = random.getrandbits(m) ^ pairs[i][1]
         masked[i] = (masked0, masked1)
-    conn.send(('', masked))
+    conn.send(('masked', masked))
 
 # extend k OTs to m OTs of l-bit strings (Ishai, Fig. 1 algorithm)
 # pair items are integers
 def ishai_receiver(conn, choice_arr, N, e, k, l):
     m = len(choice_arr)
     # number of bytes to store m and k and l bits
-    nBytesM = int(math.ceil(m / 8.0))
+    # nBytesM = int(math.ceil(m / 8.0))
     nBytesK = int(math.ceil(k / 8.0))
     nBytesL = int(math.ceil(l / 8.0))
-    r = utils.bitarrayToInt(choice_arr)
-    T = [secrets.randbits(m) for i in range(k)]
+    r = utils.bitarrayToInt(choice_arr)         # huge bottleneck here - shifting very long integers
+    T = [secrets.randbits(m) for i in range(k)] # bottleneck? TODO - get times associated with different ops
     # act as sender
     pairs = [(T[i], r ^ T[i]) for i in range(k)]
-    sender_exec_ot_k_m(conn, pairs, m, N)
+    sender_exec_ot_k_m(conn, pairs, m, N)       # bottleneck? (2*m pseudorandom generator invocations + k OTs)
     Y = conn.recv()[1]
-    print('Got Y=', Y)
-    Z = []
+    # print('Got Y=', Y)
+    # Data is often too big (m > 100000, for example) to be pickled and sent over pipe.
+    # So, write Z to memory instead.
+    fd_z = open('z.txt', 'w')
     for i in range(m):
-        col = utils.getIthBitInt(T, m, i)
+        col = utils.getIthBitInt(T, m, i)       # How much time do these util functions take? very inefficeint matrix operation here (Schneider 2015 addresses)
         # get l-bit hash for the column of bit-matrix T
         h = SHAKE128.new(data=col.to_bytes(nBytesK, byteorder='big')).read(nBytesL)
-        Z.append(Y[i][choice_arr[i]] ^ int.from_bytes(h, byteorder='big'))
-    print('Z=', Z)
-    conn.send(('Z', Z)) # recover Z in main()
+        fd_z.write(str(Y[i][choice_arr[i]] ^ int.from_bytes(h, byteorder='big')) + '\n')
+    fd_z.close()
+    conn.send('ACK')
 
 # extend k OTs to m OTs of l-bit strings (Ishai, Fig. 1 algorithm)
 # pair items are integers
@@ -159,7 +167,7 @@ def ishai_sender(conn, pairs, N, e, k, l):
     s_arr = [secrets.randbits(1) for i in range(k)]
     s = utils.bitarrayToInt(s_arr)
     # act as receiver with input s. Get k m-bit vals back
-    Q = receiver_exec_ot_k_m(conn, s_arr, m, N, e)
+    Q = receiver_exec_ot_k_m(conn, s_arr, m, N, e) # bottleneck? (2*m pseudorandom generator invocations + k OTs)
     Y = []
     for i in range(m):
         col = utils.getIthBitInt(Q, m, i)
@@ -188,11 +196,13 @@ def test(pairs, choices):
     p_a.join()
     p_b.join()
 
-# k seed OTs of length k?, n 1-bit random OTs
+# k seed OTs of length k, n 1-bit random OTs
 def generatePrecomputedFiles(k, n):
     f_a = open('a.txt', 'w')
     pairs = [(secrets.randbits(1), secrets.randbits(1)) for i in range(n)]
     choices = [secrets.randbits(1) for i in range(n)]
+    # TODO - fix bottleneck by never working with long binary array
+    # choices = secrets.randbits(n)
     for i in range(n):
         s_a = str(pairs[i][0]) + ' ' + str(pairs[i][1]) + '\n'
         f_a.write(s_a)
@@ -207,7 +217,15 @@ def generatePrecomputedFiles(k, n):
     p_b.start()
     p_a.join()
     p_b.join()
-    Z = child_conn.recv()[1]
+    print("both done")
+    # Need to get the received seeds (written by receiver to disk in this demo)
+    child_conn.recv() # ACK that z.txt is writted
+    fd_z = open('z.txt', 'r')
+    Z = []
+    for line in fd_z:
+        Z.append(int(line))
+
+    print("Got Z in main")
     f_b = open('b.txt', 'w')
     for i in range(n):
         s_b = str(choices[i]) + ' ' + str(Z[i]) + '\n'
