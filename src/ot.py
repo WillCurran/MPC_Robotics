@@ -18,7 +18,7 @@ from Crypto.Hash import SHAKE128        # Asharov/Lindell/Schneider/Zohner 2013 
 import utils
 import math
 import sys
-
+import random
 
 # receiver generates RSA keypair and sends sender one legitimate key and one garbage one.
 # choice is given by the swapping of the key order
@@ -54,12 +54,13 @@ def decrypt_selection(conn, e_list, sk_receiver, choice):
     cipher = PKCS1_OAEP.new(sk_receiver)
     return cipher.decrypt(e_list[choice])
 
+# choice is binary integer [0, 1]
 def receiver_exec_OT(conn, choice, N, e):
     # print("receiver reporting for duty!")
     sk = send_pks(conn, N, e, choice, '')
     e_list = conn.recv()[1]
     msg = decrypt_selection(conn, e_list, sk, choice)
-    print("receiver done. Got", msg)
+    # print("receiver done. Got", msg)
     return msg
 
 # input: x0 and x1 are bytes objects
@@ -70,20 +71,62 @@ def sender_exec_OT(conn, x0, x1, N):
     send_msgs_enc(conn, pk0, pk1, x0, x1, N, '')
     # print("sender done")
 
-# 1-out-of-2 OTs, where strings are m bits long and there are k choices
+# 1-out-of-2 OTs, where strings are k bits long and there are k choices
+# choices are binary integers
 # return array of chosen integers
-def receiver_exec_ot_k_m(conn, choice_arr, N, e):
+def receiver_exec_ot_k_k(conn, choice_arr, N, e):
     ret = []
     for choice in choice_arr:
         ret.append(int.from_bytes(receiver_exec_OT(conn, choice, N, e), byteorder='big'))
+    print("OTk_k got", ret)
     return ret
 
-# 1-out-of-2 OTs, where pair items are m bits long and there are k pairs to choose from
-def sender_exec_ot_k_m(conn, pairs, N):
+# 1-out-of-2 OTs, where pair items are k bits long and there are k pairs to choose from
+# pair items are integers
+def sender_exec_ot_k_k(conn, pairs, N):
+    k = len(pairs)
+    nBytesK = int(math.ceil(k / 8.0))
+    # RSA works with bytes objects
+    pairs = [(pairs[i][0].to_bytes(nBytesK, byteorder='big'), pairs[i][1].to_bytes(nBytesK, byteorder='big'))
+            for i in range(k)]
     for (x0, x1) in pairs:
         sender_exec_OT(conn, x0, x1, N)
 
+# 1-out-of-2 OTs, where strings are m bits long and there are k choices
+# pair items are integers
+# return array of chosen integers
+def receiver_exec_ot_k_m(conn, choice_arr, m, N, e):
+    k = len(choice_arr)
+    # OT with seeds
+    seeds = receiver_exec_ot_k_k(conn, choice_arr, N, e)
+    # receive masked m-bit strings
+    masked = conn.recv()[1]
+    ret = []
+    for i in range(k):
+        random.seed(seeds[i])
+        ret.append(masked[i][choice_arr[i]] ^ random.getrandbits(m))
+    print(ret)
+    return ret
+
+# 1-out-of-2 OTs, where pair items are m bits long and there are k pairs to choose from
+# pair items are integers
+def sender_exec_ot_k_m(conn, pairs, m, N):
+    k = len(pairs)
+    rand_strs = [(secrets.randbits(k), secrets.randbits(k)) for i in range(k)]
+    # OT with seeds
+    sender_exec_ot_k_k(conn, rand_strs, N)
+    # Send masked strings
+    masked = [None]*k
+    for i in range(k):
+        random.seed(rand_strs[i][0])
+        masked0 = random.getrandbits(m) ^ pairs[i][0]
+        random.seed(rand_strs[i][1])
+        masked1 = random.getrandbits(m) ^ pairs[i][1]
+        masked[i] = (masked0, masked1)
+    conn.send(('', masked))
+
 # extend k OTs to m OTs of l-bit strings (Ishai, Fig. 1 algorithm)
+# pair items are integers
 def ishai_receiver(conn, choice_arr, N, e, k, l):
     m = len(choice_arr)
     # number of bytes to store m and k and l bits
@@ -93,11 +136,8 @@ def ishai_receiver(conn, choice_arr, N, e, k, l):
     r = utils.bitarrayToInt(choice_arr)
     T = [secrets.randbits(m) for i in range(k)]
     # act as sender
-    pairs = [(
-              (T[i]).to_bytes(nBytesM, byteorder='big'), 
-              (r ^ T[i]).to_bytes(nBytesM, byteorder='big')
-             ) for i in range(k)]
-    sender_exec_ot_k_m(conn, pairs, N)
+    pairs = [(T[i], r ^ T[i]) for i in range(k)]
+    sender_exec_ot_k_m(conn, pairs, m, N)
     Y = conn.recv()[1]
     print('Got Y=', Y)
     Z = []
@@ -110,6 +150,7 @@ def ishai_receiver(conn, choice_arr, N, e, k, l):
     conn.send(('Z', Z)) # recover Z in main()
 
 # extend k OTs to m OTs of l-bit strings (Ishai, Fig. 1 algorithm)
+# pair items are integers
 def ishai_sender(conn, pairs, N, e, k, l):
     m = len(pairs)
     # number of bytes to store k and l bits
@@ -118,7 +159,7 @@ def ishai_sender(conn, pairs, N, e, k, l):
     s_arr = [secrets.randbits(1) for i in range(k)]
     s = utils.bitarrayToInt(s_arr)
     # act as receiver with input s. Get k m-bit vals back
-    Q = receiver_exec_ot_k_m(conn, s_arr, N, e)
+    Q = receiver_exec_ot_k_m(conn, s_arr, m, N, e)
     Y = []
     for i in range(m):
         col = utils.getIthBitInt(Q, m, i)
@@ -140,6 +181,8 @@ def test(pairs, choices):
     parent_conn, child_conn = Pipe()
     p_a = Process(target=ishai_receiver, args=(parent_conn, choices, N, e, k, l,))
     p_b = Process(target=ishai_sender, args=(child_conn, pairs, N, e, k, l,))
+    # p_a = Process(target=receiver_exec_ot_k_m, args=(parent_conn, choices, m, N, e,))
+    # p_b = Process(target=sender_exec_ot_k_m, args=(child_conn, pairs, m, N,))
     p_a.start()
     p_b.start()
     p_a.join()
