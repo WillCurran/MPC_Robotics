@@ -4,23 +4,23 @@ import sys
 from multiprocessing import Process, Pipe
 
 # alice sends k+s choices (1 overall choice) - need to keep track of r_d
-def alice_send_choices_enc(conn, choice_a, k, s, ot_receiver_open_file):
+def alice_send_choices_enc(conn, choice_a, k, ot_receiver_open_file):
     # return ot.send_choice(conn, choice_a, ot_receiver_open_file)
-    return ot.send_choice_big(conn, choice_a, k, s, ot_receiver_open_file)
+    return ot.send_choice_big(conn, choice_a, k, ot_receiver_open_file)
 
 # bob sends 2 strings, masked with original OT bits
-def bob_send_strings_enc(conn, choice_b, strings_b, k, s, ot_sender_open_file):
+def bob_send_strings_enc(conn, choice_b, strings_b, k, ot_sender_open_file):
     if choice_b:
         # ot.recv_choice_send_correction(conn, strings_b[1], strings_b[0], ot_sender_open_file)
-        return ot.recv_choice_send_correction_big(conn, strings_b[1], strings_b[0], k, s, ot_sender_open_file)
+        return ot.recv_choice_send_correction_big(conn, strings_b[1], strings_b[0], k, ot_sender_open_file)
     else:
         # ot.recv_choice_send_correction(conn, strings_b[0], strings_b[1], ot_sender_open_file)
-        return ot.recv_choice_send_correction_big(conn, strings_b[0], strings_b[1], k, s, ot_sender_open_file)
+        return ot.recv_choice_send_correction_big(conn, strings_b[0], strings_b[1], k, ot_sender_open_file)
         
 # alice decrypts string
-def alice_compute_result(conn, choice_a, r_d, k, s):
+def alice_compute_result(conn, choice_a, r_d, k):
     # return ot.recv_correction_decrypt(conn, choice_a, r_d)
-    return ot.recv_correction_decrypt_big(conn, choice_a, r_d, k, s)
+    return ot.recv_correction_decrypt_big(conn, choice_a, r_d, k)
 
 # Assumes global pk_shared and sk_only_a defined as pallier keys.
 def example_execution_OT_with_JC(choice_a, choice_b, strings_b, fd_a, fd_b, k, s):

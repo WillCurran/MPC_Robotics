@@ -6,11 +6,11 @@ from multiprocessing import Process, Pipe, Queue, Lock
 # conn is a bidirectional Pipe() open with Alice
 # Bob's input in string form
 # n is length of input
-# k, s security parameters
-def runBob(conn, moore_machine, bob_input, n, k, s):
+# k is security parameter
+def runBob(conn, moore_machine, bob_input, n, k):
     # recv alice's public key
     alice_pk = conn.recv()
-    bob = Bob(conn, bob_input, moore_machine, alice_pk, k, s) # Bob creates garbled matrix, sends init state&pad
+    bob = Bob(conn, bob_input, moore_machine, alice_pk, k) # Bob creates garbled matrix, sends init state&pad
 
     for i in range(n):
         bob.append_GM_row()
@@ -25,11 +25,11 @@ def runBob(conn, moore_machine, bob_input, n, k, s):
 # conn is a bidirectional Pipe() open with Alice
 # Bob's input in string form
 # n is length of input
-# k, s security parameters
-def runBobDebug(conn, moore_machine, bob_input, n, k, s, xor_input):
+# k is security parameter
+def runBobDebug(conn, moore_machine, bob_input, n, k, xor_input):
     # recv alice's public key
     alice_pk = conn.recv()
-    bob = Bob(conn, bob_input, moore_machine, alice_pk, k, s) # Bob creates garbled matrix, sends init state&pad
+    bob = Bob(conn, bob_input, moore_machine, alice_pk, k) # Bob creates garbled matrix, sends init state&pad
 
     # print("M")
     # print_M(bob.M)
@@ -64,9 +64,9 @@ def runBobDebug(conn, moore_machine, bob_input, n, k, s, xor_input):
 # conn is a bidirectional Pipe() open with Bob
 # Alice's input in string form
 # n is length of input
-# k, s security parameters
-def runAlice(conn, q, alice_input, n, k, s):
-    alice = Alice(conn, q, alice_input, n, k, s) # Alice creates keypair and sends public key to Bob
+# k is security parameter
+def runAlice(conn, q, alice_input, n, k):
+    alice = Alice(conn, q, alice_input, n, k) # Alice creates keypair and sends public key to Bob
     # Alice waits for GM, initial state and pad from Bob
     (init_state, init_pad) = conn.recv()
     GM = conn.recv()
@@ -78,16 +78,16 @@ def runAlice(conn, q, alice_input, n, k, s):
         alice.encrypt_input_i()
         # wait for garbled keys
         strings_enc = conn.recv()
-        color_stream.append(alice.step3(strings_enc, GM))
+        color_stream.append(alice.evaluateRow(strings_enc, GM))
     print("Color stream:", color_stream)
     return color_stream
 
 # conn is a bidirectional Pipe() open with Bob
 # Alice's input in string form
 # n is length of input
-# k, s security parameters
-def runAliceDebug(conn, alice_input, n, k, s, moore_machine):
-    alice = Alice(conn, moore_machine, alice_input, n, k, s) # Alice creates keypair and sends public key to Bob
+# k is security parameter
+def runAliceDebug(conn, alice_input, n, k, moore_machine):
+    alice = Alice(conn, moore_machine, alice_input, n, k) # Alice creates keypair and sends public key to Bob
     # Alice waits for GM, initial state and pad from Bob
     (init_state, init_pad) = conn.recv()
     GM = conn.recv()
@@ -99,7 +99,7 @@ def runAliceDebug(conn, alice_input, n, k, s, moore_machine):
         alice.encrypt_input_i()
         # wait for garbled keys
         strings_enc = conn.recv()
-        print("Alice Garbled Eval:", alice.step3(strings_enc, GM))
+        print("Alice Garbled Eval:", alice.evaluateRow(strings_enc, GM))
 
 def test():
     moore_machine = {'alphabet': [0, 1],
@@ -114,10 +114,9 @@ def test():
 
     # hopefully more scalable when we move OTs to batch precomputation
     k = 8 # security parameter
-    s = 16 # statistical security parameter
     parent_conn, child_conn = Pipe()
-    p_a = Process(target=runAlice, args=(parent_conn, x_a, n, k, s, moore_machine,))
-    p_b = Process(target=runBob, args=(child_conn, moore_machine, x_b, n, k, s, xor_input,))
+    p_a = Process(target=runAlice, args=(parent_conn, x_a, n, k, moore_machine,))
+    p_b = Process(target=runBob, args=(child_conn, moore_machine, x_b, n, k, xor_input,))
     start = time.time()
     p_a.start()
     p_b.start()

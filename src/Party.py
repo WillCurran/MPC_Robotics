@@ -103,11 +103,11 @@ class Party:
             self.compareExchange(connections, ipc_lock, swap[0], swap[1], round_num, q_OT_count)
         # q.put([s & utils.bitmask(0, self.n_symbol_bits-1) for s in self.my_shares[round_num]])
 
-    def init_moore(self, conn, k, s):
+    def init_moore(self, conn, k):
         # set up moore machine
         if self.id == "A":
             n_states = 12
-            self.moore_eval_obj = DFA_matrix.Alice(conn, n_states, '', k, s, self.recver_file)
+            self.moore_eval_obj = DFA_matrix.Alice(conn, n_states, '', k, self.recver_file)
             # wait for initial state and pad from Bob
             (init_state, init_pad) = conn.recv()
             self.moore_eval_obj.init_state_and_pad(init_state, init_pad)
@@ -130,7 +130,7 @@ class Party:
             # Bob creates garbled matrix, sends init state&pad
             self.moore_eval_obj = DFA_matrix.Bob(
                 conn, '', minimal_binary_together_filter,
-                k, s, self.sender_file
+                k, self.sender_file
             )
 
     def getMooreMachineString(self, round_num, pad_pwr_2):
@@ -147,7 +147,7 @@ class Party:
                 shared_input_str += format(share & utils.bitmask(0, self.n_symbol_bits-1), bit_format)
         return shared_input_str
 
-    def executeMooreMachineEval(self, conn, k, s, round_num, last_round):
+    def executeMooreMachineEval(self, conn, k, round_num, last_round):
         shared_input_str = self.getMooreMachineString(round_num, True)
         n = len(shared_input_str)
         self.moore_eval_obj.extend_input(shared_input_str, last_round)
@@ -162,7 +162,7 @@ class Party:
                 # send encrypted choice
                 self.moore_eval_obj.encrypt_input_i(round_num, n)
                 # wait for garbled keys and evaluate
-                self.color_stream.append(self.moore_eval_obj.step3(new_GM_rows, round_num, n))
+                self.color_stream.append(self.moore_eval_obj.evaluateRow(new_GM_rows, round_num, n))
             self.moore_eval_obj.resetRowI()
         else:
             # one extra row?, so alice can get color at end every time
@@ -176,8 +176,8 @@ class Party:
                 self.moore_eval_obj.send_garbled_key(i)
 
     # execute sort and then moore machine eval
-    def executePipeline(self, connections, q, ipc_lock, k, s, q_OT_count):
-        self.init_moore(connections, k, s)
+    def executePipeline(self, connections, q, ipc_lock, k, q_OT_count):
+        self.init_moore(connections, k)
         # for all rounds
         for i in range(len(self.my_shares)):
             # if self.id == "A":
@@ -185,7 +185,7 @@ class Party:
             self.executeSort(connections, q, ipc_lock, i, q_OT_count)
             # if self.id == "A":
                 # print("Moore machine, round", i, "...")
-            self.executeMooreMachineEval(connections, k, s, i, i==(len(self.my_shares)-1))
+            self.executeMooreMachineEval(connections, k, i, i==(len(self.my_shares)-1))
         if self.id == "A":
             q.put(self.color_stream)
 

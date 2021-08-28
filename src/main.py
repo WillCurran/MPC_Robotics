@@ -152,7 +152,6 @@ if __name__ == '__main__':
         print("Took", end-start, "seconds.")
     elif mode == 'M':
         k = 256 # security parameter
-        s = 64 # statistical security parameter
 
         mpl = multiprocessing.log_to_stderr()
         mpl.setLevel(logging.INFO)
@@ -161,8 +160,8 @@ if __name__ == '__main__':
         ipc_lock = Lock()
         # Queue for reporting output
         q = Queue()
-        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s,))
-        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s,))
+        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k))
+        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k,))
         start = time.time()
         p_a.start()
         p_b.start()
@@ -212,15 +211,14 @@ if __name__ == '__main__':
         bob.setOTFiles(bob_sender_file, bob_recver_file)
 
         k = 256 # security parameter
-        s = 64 # statistical security parameter
         
         connections = Pipe()
         ipc_lock = Lock()
         # Queue for reporting output
         q = Queue()
         # q_OT_count = Queue()
-        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, s, None,))
-        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, s, None,))
+        p_a = Process(target=alice.executePipeline, args=(connections[0], q, ipc_lock, k, None,))
+        p_b = Process(target=bob.executePipeline, args=(connections[1], q, ipc_lock, k, None,))
         start = time.time()
         p_a.start()
         p_b.start()
@@ -260,7 +258,7 @@ if __name__ == '__main__':
         [OTs_due_to_time_bits_sort, OTs_due_to_symbol_bits_sort, OT_rounds_sort] = \
             [a * n_rounds for a in ot_recurrence.num_OTs_sort(len(network.swaps), n_time_bits, n_symbol_bits)]
         ots_due_to_symbol_bits_moore = \
-            n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3, k_prime, s) # n sensors needed
+            n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(2**n_time_bits, n_symbol_bits, 3, k_prime) # n sensors needed
         print("n =", len(input_a[0]), "len of network =", len(network.swaps))
         output_file = open('../Graphs/testing_output.txt', 'a')
         output_file.write(str(n_rounds) + " " + str(n_time_bits) + " " + \

@@ -74,7 +74,7 @@ def permDfaMat(M, PER, n, q):
     return PM
 
 # assume num2 is of n_digits digits. That is, 0b1 || 0b1 = 0b1 || 0b0001 = 0b10001 = 17 if n_digits = 4.
-def numConcat(num1, num2, n_digits): 
+def concatenateBits(num1, num2, n_digits): 
      # add zeroes to the end of num1 
      num1 = num1 << n_digits
      # add num2 to num1 
@@ -86,10 +86,6 @@ def split_bits(n1_concat_n2, bits_n2):
     n2 = n1_concat_n2 ^ (n1 << bits_n2)
     return (n1, n2)
 
-# return true if there are n zeros at the end of the given number.
-def hasNTrailingZeros(number, n):
-    return (number & (2**n - 1)) == 0 # AND bitmask with n-ones
-
 class Alice:
     # Client encrypts her input at her current row_i and sends it to server in the form
     # (c_enc_a, c_prime_enc_a)
@@ -98,7 +94,6 @@ class Alice:
             self.conn, 
             int(self.input[round_num*n + self.row_i]), 
             self.k_prime,
-            self.s,
             self.ot_receiver_open_file
         )
 
@@ -108,7 +103,7 @@ class Alice:
         random.seed(self.pad)
         # throw away first two pads
         for i in range(2):
-            random.getrandbits(self.k_prime + self.s)
+            random.getrandbits(self.k_prime)
         pad = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
         # print("ALICE:",len(GM))
         output = pad ^ GM[self.row_i][self.state][2]
@@ -122,30 +117,25 @@ class Alice:
         self.row_i = 0
 
     # Client retrieves the keys and computes the final result.
-    def step3(self, GM, round_num, n):
+    def evaluateRow(self, GM, round_num, n):
         # decrypt garbled key
         k_i = otJC.alice_compute_result(
             self.conn,
             int(self.input[round_num*n + self.row_i]), 
             self.r_d, 
-            self.k_prime,
-            self.s
+            self.k_prime
         )
-
-        # get the corresponding random nums
-        random.seed(self.pad)
-        pads = (
-            random.getrandbits(self.k_prime + self.s), 
-            random.getrandbits(self.k_prime + self.s)
-        )
-        # navigate to the next state (first guess)
-        newstate_concat_newpad = k_i ^ pads[0] ^ GM[self.row_i][self.state][0]
-        if not hasNTrailingZeros(newstate_concat_newpad, self.s):
-            newstate_concat_newpad = k_i ^ pads[1] ^ GM[self.row_i][self.state][1]
-            if not hasNTrailingZeros(newstate_concat_newpad, self.s):
-                print("BAD Garbled Key or Pad! Neither element could be decrypted.")
-        # strip zeros
-        (newstate_concat_newpad, _) = split_bits(newstate_concat_newpad, self.s)
+        # Point-and-permute: Check last bit of key to know which element to decrypt.
+        last_bit = k_i & 1
+        if last_bit:
+            random.seed(self.pad)
+            random.getrandbits(self.k_prime)
+            pad_1 = random.getrandbits(self.k_prime)
+            newstate_concat_newpad = k_i ^ pad_1 ^ GM[self.row_i][self.state][1]
+        else:
+            random.seed(self.pad)
+            pad_0 = random.getrandbits(self.k_prime)
+            newstate_concat_newpad = k_i ^ pad_0 ^ GM[self.row_i][self.state][0]
         (self.state, self.pad) = split_bits(newstate_concat_newpad, self.k)
         self.row_i += 1
         # color at the resulting state
@@ -156,12 +146,11 @@ class Alice:
         self.state = init_state_index
         self.pad = init_pad
 
-    def __init__(self, conn, q, alice_input, k, s, ot_receiver_open_file):
+    def __init__(self, conn, q, alice_input, k, ot_receiver_open_file):
         self.input = alice_input
         self.q = q
         self.k = k
         self.k_prime = self.k + math.ceil(math.log(self.q, 2))
-        self.s = s
         self.state = None
         self.pad = None
         self.row_i = 0 # which row am I in?
@@ -189,7 +178,6 @@ class Bob:
             int(self.input[alice_i]), 
             self.K_enc[alice_i],
             self.k_prime,
-            self.s,
             self.ot_sender_open_file
         )
         # if alice_i == 12:
@@ -197,11 +185,17 @@ class Bob:
 
     def append_GM_row(self):
         new_gm_row = [(0,0,0)] * self.q
-        # Server generates 1 random keypair for garbling:
-        # (This is a cryptographically secure RNG, in the order of security bits)
-        a = secrets.randbits(self.k_prime + self.s)
-        b = secrets.randbits(self.k_prime + self.s)
-        garbled_keypair = (a,b)
+
+        # ---------- Generate 1 random keypair for garbling ----------
+        a = secrets.randbits(self.k_prime)
+        b = secrets.randbits(self.k_prime - 1)
+        # Point-and-permute technique uses last bit of each key to know which element the key points is used with.
+        # Last bit of a is sigma and last bit of b is (1 - sigma), where sigma is a random coin.
+        sigma = a & 1
+        b = concatenateBits(b, 1 - sigma, 1)
+        garbled_keypair = (a, b)
+        # --------------------
+
         # Server generates a new row to append to PAD:
         next_pad_row = [secrets.randbits(self.k) for i in range (self.q)]
         # server generates a new row to append to PER:
@@ -210,22 +204,23 @@ class Bob:
         new_pm_row = permDfaMat([self.m_row], [self.PER[len(self.PER) - 1], next_per_row], 1, self.q)[0]
         # Computing the Garbled DFA Matrix GMΓ from PMΓ
         for j in range (0, self.q):
-            # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
-            # right now we just have the Moore Machine output copied twice
-            # a = numConcat(new_pm_row[j][0], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
-            a = numConcat(new_pm_row[j][0], next_pad_row[new_pm_row[j][0] ], self.k)
-            a = numConcat(a, 0, self.s)
-            # b = numConcat(new_pm_row[j][1], new_pm_row[j][2], MOORE_MACHINE_OUTPUT_BITS)
-            b = numConcat(new_pm_row[j][1], next_pad_row[new_pm_row[j][1] ], self.k)
-            b = numConcat(b, 0, self.s) 
+            a = concatenateBits(new_pm_row[j][0], next_pad_row[new_pm_row[j][0] ], self.k)
+            b = concatenateBits(new_pm_row[j][1], next_pad_row[new_pm_row[j][1] ], self.k)
             a = a ^ garbled_keypair[0]
             b = b ^ garbled_keypair[1]
             c = new_pm_row[j][2]
-            new_gm_row[j] = (a,b,c)
+            # Point-and-permute: swap if sigma == 1.
+            # This way, the garbled key with last bit '0' is always used on new_gm_row[j][0],
+            # and the key with last bit '1' is used on new_gm_row[j][1]. 
+            # Yet, it is not revealed to Alice if there was a swap or not.
+            if sigma:
+                new_gm_row[j] = (b,a,c)
+            else:
+                new_gm_row[j] = (a,b,c)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[len(self.PAD) - 1][j])
-            a = random.getrandbits(self.k_prime + self.s)
-            b = random.getrandbits(self.k_prime + self.s)
+            a = random.getrandbits(self.k_prime)
+            b = random.getrandbits(self.k_prime)
             c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
             pad = (a,b,c)
             a = new_gm_row[j][0] ^ pad[0]
@@ -241,16 +236,16 @@ class Bob:
         self.K_enc.append(garbled_keypair)
         self.n += 1
 
+    # lags 1 round behind until the end
     def extend_input(self, bob_input, last_row):
         self.input += bob_input
         if last_row:
             self.input += str(secrets.randbits(1))
 
-    def __init__(self, conn, bob_input, dfa, k, s, ot_sender_open_file):
+    def __init__(self, conn, bob_input, dfa, k, ot_sender_open_file):
         self.input = bob_input
         self.dfa = dfa
         self.k = k
-        self.s = s
         self.n = 0
         self.conn = conn
         self.ot_sender_open_file = ot_sender_open_file
@@ -259,35 +254,42 @@ class Bob:
         self.q = dfa['states']
         self.k_prime = self.k + math.ceil(math.log(self.q, 2))
         new_gm_row = [(0,0,0)] * self.q
-        # Server generates 1 random keypair for garbling:
-        a = secrets.randbits(self.k_prime + self.s)
-        b = secrets.randbits(self.k_prime + self.s)
-        garbled_keypair = (a,b)
+
+        # ---------- Generate 1 random keypair for garbling ----------
+        a = secrets.randbits(self.k_prime)
+        b = secrets.randbits(self.k_prime - 1)
+        # Point-and-permute technique uses last bit of each key to know which element the key points is used with.
+        # Last bit of a is sigma and last bit of b is (1 - sigma), where sigma is a random coin.
+        sigma = a & 1
+        b = concatenateBits(b, 1 - sigma, 1)
+        garbled_keypair = (a, b)
+        # --------------------
+
         self.m_row = singleMooreRow(self.dfa)
-        # need to start with two rows for pad and permutation matrix
-        # the best we can do is to start with cryptographically secure pad, for now.
-        # later, we must use a cryptographically secure PRNG which supports a setseed operation.
+        # The best we can do is to use a cryptographically secure pad, 
+        # which will serve as a seed in the pseudorandom generator later.
         self.PAD = [[secrets.randbits(self.k) for j in range(self.q)] for i in range(2)]
         # print(self.PAD)
         self.PER = genPerm(2, self.q, self.k)
         self.PM = permDfaMat([self.m_row], self.PER, 1, self.q)
         for j in range (0, self.q):
-            # could impliment a Mealy Machine with outputs on arcs of the DFA same way,
-            # right now we just have the Moore Machine output copied twice
-            # a = numConcat(self.PM[0][j][0], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
-            a = numConcat(self.PM[0][j][0], self.PAD[1][self.PM[0][j][0] ], k)
-            a = numConcat(a, 0, self.s)
-            # b = numConcat(self.PM[0][j][1], self.PM[0][j][2], MOORE_MACHINE_OUTPUT_BITS)
-            b = numConcat(self.PM[0][j][1], self.PAD[1][self.PM[0][j][1] ], k)
-            b = numConcat(b, 0, self.s)
+            a = concatenateBits(self.PM[0][j][0], self.PAD[1][self.PM[0][j][0] ], k)
+            b = concatenateBits(self.PM[0][j][1], self.PAD[1][self.PM[0][j][1] ], k)
             a = a ^ garbled_keypair[0]
             b = b ^ garbled_keypair[1]
             c = self.PM[0][j][2]
-            new_gm_row[j] = (a,b,c)
+            # Point-and-permute: swap if sigma == 1.
+            # This way, the garbled key with last bit '0' is always used on new_gm_row[j][0],
+            # and the key with last bit '1' is used on new_gm_row[j][1]. 
+            # Yet, it is not revealed to Alice if there was a swap or not.
+            if sigma:
+                new_gm_row[j] = (b,a,c)
+            else:
+                new_gm_row[j] = (a,b,c)
             # Pseudo Random Number Generator G
             random.seed(self.PAD[0][j])
-            a = random.getrandbits(self.k_prime + self.s)
-            b = random.getrandbits(self.k_prime + self.s)
+            a = random.getrandbits(self.k_prime)
+            b = random.getrandbits(self.k_prime)
             c = random.getrandbits(MOORE_MACHINE_OUTPUT_BITS)
             pad = (a,b,c)
             a = new_gm_row[j][0] ^ pad[0]
