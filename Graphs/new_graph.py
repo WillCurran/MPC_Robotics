@@ -92,12 +92,15 @@ ax.set_ylabel('OTs')
 ax.set_xlabel('L')
 ax.set_title('OTs (Sparse vs. Padded)')
 ax.set_position([0.1, 0.1, 0.7, 0.8])
-# ax.legend()
+ax.legend()
 
 handles,labels = ax.get_legend_handles_labels()
 
 fig.tight_layout()
 fig.set_size_inches(w=4, h=3.75)
+
+
+
 plt.show()
 
 # fig1, axe = plt.subplots()

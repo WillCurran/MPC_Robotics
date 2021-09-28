@@ -33,12 +33,13 @@ G.add_edge(11,3)
 G.add_edge(11,9)
 
 pos = nx.layout.shell_layout(G)
-#pos[9] = [0, 0]
+pos[3] = [0, -.35]
+pos[9] = [0, .20]
 node_sizes = [300 for i in range(len(G))]
-node_sizes[0] = 1400
-node_sizes[3] = 1400
-node_sizes[6] = 1400
-node_sizes[9] = 1400
+node_sizes[0] = 2000
+node_sizes[3] = 2000
+node_sizes[6] = 2000
+node_sizes[9] = 5000
 M = G.number_of_edges()
 edge_colors = range(2, M + 2)
 edge_alphas = [(5 + i) / (M + 4) for i in range(M)]
@@ -72,7 +73,7 @@ labels[5]=''
 labels[6]=r'$\{01,10\}$'
 labels[7]=''
 labels[8]=''
-labels[9]=r'$together$'
+labels[9]=r'$\{00\},\{11\},\{22\}$'
 labels[10]=''
 labels[11]=''
 nx.draw_networkx_labels(G,pos,labels,font_size=9, font_color='black')

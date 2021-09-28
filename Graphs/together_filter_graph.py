@@ -20,9 +20,10 @@ G.add_edge(3,2)
 G.add_edge(3,0)
 G.add_edge(3,1)
 
-pos = nx.layout.circular_layout(G)
-pos[3] = [0, .5]
+pos = nx.layout.circular_layout(G, scale=1)
+pos[3] = [0, .40]
 node_sizes = [2000 for i in range(len(G))]
+node_sizes[3] = 8000
 M = G.number_of_edges()
 edge_colors = range(2, M + 2)
 edge_alphas = [(5 + i) / (M + 4) for i in range(M)]
@@ -40,7 +41,7 @@ edges = nx.draw_networkx_edges(
     arrowsize=10,
     #edge_color=edge_colors,
     #edge_cmap=plt.cm.Reds,
-    width=2,
+    width=3,
 )
 # set alpha value for each edge
 #for i in range(M):
@@ -50,8 +51,8 @@ labels={}
 labels[0]=r'$\{12,21\}$'
 labels[1]=r'$\{02,20\}$'
 labels[2]=r'$\{01,10\}$'
-labels[3]=r'$together$'
-nx.draw_networkx_labels(G,pos,labels,font_size=9, font_color='black')
+labels[3]=r'$\{00\},\{11\},\{22\}$'
+nx.draw_networkx_labels(G,pos,labels,font_size=11, font_color='black')
 
 edge_labels = {
     (0,1): 'a',
@@ -61,7 +62,7 @@ edge_labels = {
     (2,1): 'b',
     (1,3): 'c',
 }
-nx.draw_networkx_edge_labels(G, pos, edge_labels)
+nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=15)
 #pc = mpl.collections.PatchCollection(edges, cmap=plt.cm.Reds)
 #pc.set_array(edge_colors)
 #plt.colorbar(pc)
