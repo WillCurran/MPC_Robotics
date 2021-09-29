@@ -165,7 +165,7 @@ class Party:
                 self.color_stream.append(self.moore_eval_obj.evaluateRow(new_GM_rows, round_num, n))
             self.moore_eval_obj.resetRowI()
         else:
-            # one extra row?, so alice can get color at end every time
+            # one extra row, so alice can get color at end
             for i in range(n):
                 self.moore_eval_obj.append_GM_row()
             # send new rows to Alice
@@ -185,6 +185,15 @@ class Party:
             self.executeSort(connections, q, ipc_lock, i, q_OT_count)
             # if self.id == "A":
                 # print("Moore machine, round", i, "...")
+            self.executeMooreMachineEval(connections, k, i, i==(len(self.my_shares)-1))
+        if self.id == "A":
+            q.put(self.color_stream)
+
+    # execute sort and then moore machine eval
+    def executeMooreMachineRoundsOnly(self, connections, q, k):
+        self.init_moore(connections, k)
+        # for all rounds
+        for i in range(len(self.my_shares)):
             self.executeMooreMachineEval(connections, k, i, i==(len(self.my_shares)-1))
         if self.id == "A":
             q.put(self.color_stream)
