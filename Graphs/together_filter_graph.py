@@ -69,4 +69,5 @@ nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=15)
 
 ax = plt.gca()
 ax.set_axis_off()
+plt.savefig("together_filter_graph_tight_bounding_box.pgf",bbox_inches='tight')
 plt.show()
