@@ -15,8 +15,9 @@ class Party:
         self.my_shares = _input
         self.comparison_bit = None              # Saved secret share result of the compare GC eval.
         self.id = _id
-        self.time_bitmask = utils.bitmask(self.n_symbol_bits, self.n_time_bits + self.n_symbol_bits - 1)
-        self.symbol_bitmask = utils.bitmask(0, self.n_symbol_bits - 1)
+        if self.n_time_bits != 0:
+            self.time_bitmask = utils.bitmask(self.n_symbol_bits, self.n_time_bits + self.n_symbol_bits - 1)
+            self.symbol_bitmask = utils.bitmask(0, self.n_symbol_bits - 1)
         self.max_val = (1 << (self.n_symbol_bits + self.n_time_bits)) - 1
         self.sender_file = None
         self.recver_file = None
@@ -137,6 +138,11 @@ class Party:
         shared_input_str = ''
         # leading 0s in front of bits
         bit_format = '0' + str(self.n_symbol_bits) + 'b'
+        # Do not strip times
+        if self.n_time_bits == 0:
+            for share in self.my_shares[round_num]:
+                shared_input_str += format(share, bit_format)
+            return shared_input_str
         # ignore last symbols which are definitely nulls if input was padded for merge sort
         if pad_pwr_2:
             n_elements = self.n_sensors * (2**self.n_time_bits)

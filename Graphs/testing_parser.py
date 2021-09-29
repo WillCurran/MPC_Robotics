@@ -1,4 +1,5 @@
-# assume 10 of each w in testing_output.txt file
+N_REPETITIONS = 8
+
 def get_graphing_data():
     rounds = []
     w = []
@@ -20,14 +21,16 @@ def get_graphing_data():
             ots_moore.append(int(line[6]))
             ot_rounds_moore.append(int(line[7]))
     l = len(rounds)
-    r_avg = [rounds[i] for i in range(0, l, 10)]
-    w_avg = [w[i] for i in range(0, l, 10)]
-    t_avg = [sum(times[i:i+10]) / 10.0 for i in range(0, l, 10)]
-    ots_time_sort_avg = [ots_time_sort[i] for i in range(0, l, 10)]
-    ots_symbol_sort_avg = [ots_symbol_sort[i] for i in range(0, l, 10)]
-    ot_rounds_sort_avg = [ot_rounds_sort[i] for i in range(0, l, 10)]
-    ots_moore_avg = [ots_moore[i] for i in range(0, l, 10)]
-    ot_rounds_moore_avg = [ot_rounds_moore[i] for i in range(0, l, 10)]
+    r_avg = [rounds[i] for i in range(0, l, N_REPETITIONS)]
+    w_avg = [w[i] for i in range(0, l, N_REPETITIONS)]
+    t_avg = [sum(times[i:i+N_REPETITIONS]) / float(N_REPETITIONS) for i in range(0, l, N_REPETITIONS)]
+    ots_time_sort_avg = [ots_time_sort[i] for i in range(0, l, N_REPETITIONS)]
+    ots_symbol_sort_avg = [ots_symbol_sort[i] for i in range(0, l, N_REPETITIONS)]
+    ot_rounds_sort_avg = [ot_rounds_sort[i] for i in range(0, l, N_REPETITIONS)]
+    ots_moore_avg = [ots_moore[i] for i in range(0, l, N_REPETITIONS)]
+    ot_rounds_moore_avg = [ot_rounds_moore[i] for i in range(0, l, N_REPETITIONS)]
     return (r_avg, w_avg, t_avg, ots_time_sort_avg, 
         ots_symbol_sort_avg, ot_rounds_sort_avg, ots_moore_avg, 
         ot_rounds_moore_avg)
+
+print(get_graphing_data())

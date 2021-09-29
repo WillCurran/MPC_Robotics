@@ -187,7 +187,7 @@ if __name__ == '__main__':
     elif mode == 'A':
         infile_a = '../data/shares_a_window='+str(n_time_bits)
         infile_b = '../data/shares_b_window='+str(n_time_bits)
-        input_a, input_b = parse_input_files(infile_a, infile_b, n_rounds, n_time_bits, n_sensors, True)
+        input_a, input_b = parse_input_files(infile_a, infile_b, n_rounds, n_time_bits, n_sensors, n_time_bits!=0)
         
         alice_input, bob_input = (input_a, input_b)
         
@@ -231,7 +231,6 @@ if __name__ == '__main__':
             k_prime = k + math.ceil(math.log2(n_states))
             ots_due_to_symbol_bits_moore = \
                 n_rounds * ot_recurrence.numOTs_moore_machine_eval_one_round(1, n_symbol_bits, 3, k_prime) # n sensors needed
-            print("n =", len(input_a[0]), "len of network =", len(network.swaps))
             output_file = open('../Graphs/testing_output.txt', 'a')
             output_file.write(str(n_rounds) + " " + str(0) + " " + \
                 str(end-start) + " " + str(0) + " " + \

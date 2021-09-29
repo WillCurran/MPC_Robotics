@@ -11,8 +11,8 @@ OTs_symb_sort = data[4]
 OT_rounds_sort = data[5]
 OTs_moore = data[6]
 OT_rounds_moore = data[7]
-
-OTs_sort = [OTs_time_sort[i]+OTs_symb_sort[i] for i in range(7)]
+n = len(w)
+OTs_sort = [OTs_time_sort[i]+OTs_symb_sort[i] for i in range(n)]
 width = 0.4       # the width of the bars: can also be len(x) sequence
 x_scale = 0.6
 
@@ -25,9 +25,9 @@ ax.ticklabel_format(axis='y', style='sci', scilimits=(0,1))
 ax.bar([x_scale*i for i in w], OTs_time_sort, width, label='time bits (sort)')
 ax.bar([x_scale*i for i in w], OTs_symb_sort, width, bottom=OTs_time_sort, label='symbol bits (sort)')
 ax.bar([x_scale*i for i in w], OTs_moore, width, bottom=OTs_sort, label='symbol bits (moore)')
-plt.xticks([x_scale*i for i in w], [2**w[i] for i in range(len(w))])
-for i in range(7):
-    ax.text(x_scale*(i+0.62), 5000+OTs_time_sort[i]+OTs_symb_sort[i]+OTs_moore[i], str(run_time[i])[0:5], \
+plt.xticks([x_scale*i for i in w], [2**w[i] for i in range(n)])
+for i in range(n):
+    ax.text(x_scale*(i-0.35), 5000+OTs_time_sort[i]+OTs_symb_sort[i]+OTs_moore[i], "{:.1f}".format(run_time[i]), \
         color='black', fontweight='bold')
 
 ax.set_ylabel('OTs')
