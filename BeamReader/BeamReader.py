@@ -1,3 +1,6 @@
+# Generates shares for given time window > 0.
+# TODO - deprecate this file, move functionality to GenerateShares.py
+
 import time
 import random
 import os
