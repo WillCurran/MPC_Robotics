@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 k = 256
-s = 64
 n_states = 12 # moore states
 k_prime = k + math.ceil(math.log2(n_states))
 # total_time = 128 # total timeframe
@@ -13,8 +12,9 @@ n_sensors = 3
 n_symbol_bits = 2
 L = [t for t in range(1,129)] # sparsity
 which_network = [2**(math.ceil(math.log2(n_sensors*i))) for i in range(1,129)]
-# n_rounds = [math.ceil(128 / 2**(math.ceil(math.log2(i)))) for i in range(1,129)]
-network_sizes = {4: 4, 8: 12, 16: 34, 32: 90, 64: 226, 128: 546, 256: 1282, 512: 2946}
+# for L==1, no sorting done at all
+which_network[0] = 0
+network_sizes = {0: 0, 4: 4, 8: 12, 16: 34, 32: 90, 64: 226, 128: 546, 256: 1282, 512: 2946}
 
 sort_ots = []
 sort_time_ots = []
@@ -27,7 +27,7 @@ for i in range(128):
     sort_ots.append((a[0]+a[1]))
     # print(sort_ots[-1], a[0], a[1])
     
-    b = ot_recurrence.numOTs_moore_machine_eval_one_round(i+1, n_symbol_bits, n_sensors, k_prime, s)
+    b = ot_recurrence.numOTs_moore_machine_eval_one_round(i+1, n_symbol_bits, n_sensors, k_prime)
     moore_ots.append(b)
     # print(b)
 ots = [sort_ots[i] + moore_ots[i] for i in range(128)]
@@ -86,13 +86,13 @@ outline_y = ots
 outline_y.extend([sort_sym_ots[i] for i in range(127, -1, -1)])
 plt.fill(outline_x, outline_y, colors[0], label='time bits (sort)')
 
-ticks = [2, 4, 8, 16, 32, 64, 128]
-plt.xticks([math.log2(ticks[i]) for i in range(7)], ticks)
-ax.set_ylabel('OTs')
+ticks = [1, 2, 4, 8, 16, 32, 64, 128]
+plt.xticks([math.log2(ticks[i]) for i in range(8)], ticks)
+ax.set_ylabel('log(OTs)')
 ax.set_xlabel('L')
 ax.set_title('OTs (Sparse vs. Padded)')
 ax.set_position([0.1, 0.1, 0.7, 0.8])
-# ax.legend()
+ax.legend()
 
 handles,labels = ax.get_legend_handles_labels()
 

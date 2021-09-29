@@ -7,14 +7,14 @@
 import math
 
 # recurrence relation for and gates in one compare (greater-than) circuit
-def num_and_gates_compare_recursive(n_time_bits):
-    # 1 AND to compute greater-than bit
-    if n_time_bits == 1:
-        return 1
-    n1 = math.floor(n_time_bits/2.0)
-    n2 = math.ceil(n_time_bits/2.0)
-    # 2 additional AND gates per merge
-    return num_ot_compare(n1) + num_ot_compare(n2) + 2
+# def num_and_gates_compare_recursive(n_time_bits):
+#     # 1 AND to compute greater-than bit
+#     if n_time_bits == 1:
+#         return 1
+#     n1 = math.floor(n_time_bits/2.0)
+#     n2 = math.ceil(n_time_bits/2.0)
+#     # 2 additional AND gates per merge
+#     return num_ot_compare(n1) + num_ot_compare(n2) + 2
 
 # arithmetic version
 def num_OTs_compare_exchange(n_time_bits, n_symbol_bits):
@@ -51,6 +51,6 @@ def num_OTs_sort(n_swaps, n_time_bits, n_symbol_bits):
 
 # Each sensor sends one symbol for each possible time. 
 # Need one garbled key exchange for each symbol bit.
-def numOTs_moore_machine_eval_one_round(n_symbols_per_round, n_symbol_bits, n_sensors, k_prime, s):
-    return n_sensors * n_symbols_per_round * n_symbol_bits * (k_prime + s)
+def numOTs_moore_machine_eval_one_round(n_symbols_per_round, n_symbol_bits, n_sensors, k_prime):
+    return n_sensors * n_symbols_per_round * n_symbol_bits * k_prime
 
